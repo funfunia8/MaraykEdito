@@ -7,6 +7,7 @@ public sealed class Project
 {
     private readonly Dictionary<EntityId, ProjectObject> _objects = new();
     private readonly Dictionary<EntityId, ProductDefinition> _productDefinitions = new();
+    private readonly Dictionary<EntityId, Material> _materials = new();
 
     public Project(string name)
     {
@@ -26,6 +27,8 @@ public sealed class Project
     public IReadOnlyCollection<ProjectObject> Objects => _objects.Values;
 
     public IReadOnlyCollection<ProductDefinition> ProductDefinitions => _productDefinitions.Values;
+
+    public IReadOnlyCollection<Material> Materials => _materials.Values;
 
     public void Add(ProjectObject obj)
     {
@@ -63,6 +66,25 @@ public sealed class Project
 
     public bool RemoveProductDefinition(EntityId id)
         => _productDefinitions.Remove(id);
+
+    public void AddMaterial(Material material)
+    {
+        ArgumentNullException.ThrowIfNull(material);
+
+        if (!_materials.TryAdd(material.Id, material))
+            throw new InvalidOperationException($"Material {material.Id} already exists.");
+    }
+
+    public Material GetMaterial(EntityId id)
+        => _materials.TryGetValue(id, out var material)
+            ? material
+            : throw new KeyNotFoundException($"Material {id} was not found.");
+
+    public bool TryGetMaterial(EntityId id, out Material? material)
+        => _materials.TryGetValue(id, out material);
+
+    public bool RemoveMaterial(EntityId id)
+        => _materials.Remove(id);
 
     internal static Project Restore(EntityId id, string name)
         => new(id, name);
