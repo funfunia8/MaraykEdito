@@ -58,16 +58,99 @@ public sealed class FoundationV2Tests
     [Fact]
     public void ProductDefinition_IsIndependentFromCabinet()
     {
-        var product = new ProductDefinition(EntityId.New(), "BED-001", "Bed", ProductCategory.Bedroom);
+        var product = new ProductDefinition(
+            EntityId.New(),
+            "BED-001",
+            "Bed",
+            ProductCategory.Bedroom);
+
         Assert.Equal(ProductCategory.Bedroom, product.Category);
         Assert.Null(product.DesignObjectId);
     }
 
     [Fact]
+    public void Project_CanOwnProductDefinitions_WithoutAddingThemToObjects()
+    {
+        var project = new ProjectModel("Test");
+        var definitionId = EntityId.New();
+
+        var definition = new ProductDefinition(
+            definitionId,
+            "BED-001",
+            "Bed",
+            ProductCategory.Bedroom);
+
+        project.AddProductDefinition(definition);
+
+        Assert.Single(project.ProductDefinitions);
+        Assert.Same(definition, project.GetProductDefinition(definitionId));
+        Assert.Empty(project.Objects);
+        Assert.True(project.TryGetProductDefinition(definitionId, out var found));
+        Assert.Same(definition, found);
+    }
+
+    [Fact]
+    public void Project_ProductDefinitions_RejectNullAndDuplicateIds()
+    {
+        var project = new ProjectModel("Test");
+        var definitionId = EntityId.New();
+
+        var definition = new ProductDefinition(
+            definitionId,
+            "BED-001",
+            "Bed",
+            ProductCategory.Bedroom);
+
+        Assert.Throws<ArgumentNullException>(
+            () => project.AddProductDefinition(null!));
+
+        project.AddProductDefinition(definition);
+
+        var duplicate = new ProductDefinition(
+            definitionId,
+            "BED-002",
+            "Another Bed",
+            ProductCategory.Bedroom);
+
+        Assert.Throws<InvalidOperationException>(
+            () => project.AddProductDefinition(duplicate));
+    }
+
+    [Fact]
+    public void Project_ProductDefinitions_CanBeRemoved()
+    {
+        var project = new ProjectModel("Test");
+        var definitionId = EntityId.New();
+
+        var definition = new ProductDefinition(
+            definitionId,
+            "BED-001",
+            "Bed",
+            ProductCategory.Bedroom);
+
+        project.AddProductDefinition(definition);
+
+        Assert.True(project.RemoveProductDefinition(definitionId));
+        Assert.Empty(project.ProductDefinitions);
+        Assert.False(project.TryGetProductDefinition(definitionId, out _));
+        Assert.False(project.RemoveProductDefinition(definitionId));
+    }
+
+    [Fact]
     public void Pricing_IsIndependentFromMaterialAndCabinet()
     {
-        var item = new PricingItem(EntityId.New(), "MAT-01", "Wall finish", PricingCategory.WallFinish, 12, "m2", 25, 10);
+        var item = new PricingItem(
+            EntityId.New(),
+            "MAT-01",
+            "Wall finish",
+            PricingCategory.WallFinish,
+            12,
+            "m2",
+            25,
+            10);
+
         var subtotal = new PricingCalculator().CalculateSubtotal(new[] { item });
+
         Assert.Equal(330m, subtotal);
     }
 
@@ -76,8 +159,12 @@ public sealed class FoundationV2Tests
     {
         var project = new ProjectModel("Test");
         var room = new Room("Room");
+
         project.Add(room);
-        var definition = new ManufacturingDefinitionService().Build(project, room, "MFG-001");
+
+        var definition = new ManufacturingDefinitionService()
+            .Build(project, room, "MFG-001");
+
         Assert.Equal(room.Id, definition.SourceDesignObjectId);
         Assert.Equal("MFG-001", definition.Code);
     }
@@ -87,7 +174,14 @@ public sealed class FoundationV2Tests
     {
         var projectId = EntityId.New();
         var objectId = EntityId.New();
-        var document = new DesignDocumentService().Create(projectId, "A-101", "Kitchen Elevation", DesignDocumentType.Elevation, objectId);
+
+        var document = new DesignDocumentService().Create(
+            projectId,
+            "A-101",
+            "Kitchen Elevation",
+            DesignDocumentType.Elevation,
+            objectId);
+
         Assert.Equal(projectId, document.ProjectId);
         Assert.Equal(objectId.Value.ToString("D"), document.SourceObjectId);
     }
