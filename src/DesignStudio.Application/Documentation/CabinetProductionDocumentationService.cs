@@ -192,7 +192,7 @@ public sealed class CabinetProductionDocumentationService
         if (materialId is null)
             return "UNASSIGNED";
 
-        return project.TryGet(materialId.Value, out var obj) && obj is Material material
+        return project.TryGetMaterial(materialId.Value, out var material) && material is not null
             ? material.Code
             : materialId.Value.Value.ToString("D");
     }

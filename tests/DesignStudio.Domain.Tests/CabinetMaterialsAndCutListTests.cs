@@ -18,7 +18,8 @@ public sealed class CabinetMaterialsAndCutListTests
         Assert.NotNull(created.Cabinet.BackMaterialId);
         Assert.NotNull(created.Cabinet.DoorMaterialId);
         Assert.NotNull(created.Cabinet.EdgeBandMaterialId);
-        Assert.Equal(3, project.Objects.OfType<Material>().Count());
+        Assert.Equal(3, project.Materials.Count);
+        Assert.DoesNotContain(project.Objects, obj => obj is Material);
     }
 
     [Fact]
@@ -65,7 +66,7 @@ public sealed class CabinetMaterialsAndCutListTests
         var restored = await serializer.LoadAsync(stream);
 
         var restoredCabinet = restored.Objects.OfType<Cabinet>().Single();
-        var restoredMaterials = restored.Objects.OfType<Material>().ToList();
+        var restoredMaterials = restored.Materials.ToList();
 
         Assert.Equal(created.Cabinet.Id, restoredCabinet.Id);
         Assert.Equal(created.Cabinet.CarcassMaterialId, restoredCabinet.CarcassMaterialId);
@@ -73,6 +74,7 @@ public sealed class CabinetMaterialsAndCutListTests
         Assert.Equal(created.Cabinet.EdgeBandMaterialId, restoredCabinet.EdgeBandMaterialId);
         Assert.Equal(3, restoredMaterials.Count);
         Assert.Contains(restoredMaterials, x => x.Code == "PANEL-18");
+        Assert.DoesNotContain(restored.Objects, obj => obj is Material);
     }
 
     [Fact]

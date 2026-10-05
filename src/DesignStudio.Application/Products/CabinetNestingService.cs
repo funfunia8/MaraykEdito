@@ -43,7 +43,7 @@ public sealed class CabinetNestingService
                 continue;
             }
 
-            if (!project.TryGet(group.Key.Value, out var materialObject) || materialObject is not Material material)
+            if (!project.TryGetMaterial(group.Key.Value, out var material) || material is null)
             {
                 unplaced.AddRange(group);
                 continue;

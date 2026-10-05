@@ -34,6 +34,9 @@ public sealed class Project
     {
         ArgumentNullException.ThrowIfNull(obj);
 
+        if (obj is Material)
+            throw new InvalidOperationException("Materials must be added through AddMaterial.");
+
         if (!_objects.TryAdd(obj.Id, obj))
             throw new InvalidOperationException($"Object {obj.Id} already exists.");
     }

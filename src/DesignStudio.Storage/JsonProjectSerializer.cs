@@ -55,6 +55,33 @@ public sealed class JsonProjectSerializer : IProjectSerializer
             });
         }
 
+        foreach (var material in project.Materials)
+        {
+            var data = new MaterialData(
+                material.Code,
+                material.Name,
+                material.Kind,
+                material.Thickness.Millimeters,
+                material.SheetWidth.Millimeters,
+                material.SheetHeight.Millimeters,
+                material.BandWidth.Millimeters,
+                material.GrainDirection,
+                material.MaterialCategory,
+                material.Manufacturer,
+                material.Supplier,
+                material.Color,
+                material.Finish,
+                material.Unit);
+
+            doc.Objects.Add(new ProjectObjectRecordV2
+            {
+                Id = material.Id.Value.ToString("D"),
+                Type = material.Type,
+                Data = JsonSerializer.SerializeToElement(data, _options),
+                Metadata = ToMetadata(material)
+            });
+        }
+
         foreach (var obj in project.Objects)
         {
             object data = obj switch
@@ -75,10 +102,6 @@ public sealed class JsonProjectSerializer : IProjectSerializer
                     ToNullableId(c.ProductDefinitionId)),
                 HardwareItem h => new HardwareData(
                     h.Code, h.Name, h.Kind, h.Unit),
-                Material m => new MaterialData(
-                    m.Code, m.Name, m.Kind, m.Thickness.Millimeters,
-                    m.SheetWidth.Millimeters, m.SheetHeight.Millimeters, m.BandWidth.Millimeters, m.GrainDirection,
-                    m.MaterialCategory, m.Manufacturer, m.Supplier, m.Color, m.Finish, m.Unit),
                 _ => throw new NotSupportedException($"Unsupported project object: {obj.GetType().Name}")
             };
 
@@ -224,15 +247,24 @@ public sealed class JsonProjectSerializer : IProjectSerializer
                         data.GrainDirection,
                         id);
                     material.SetCatalogMetadata(data.Category, data.Manufacturer, data.Supplier, data.Color, data.Finish, data.Unit ?? "piece");
-                    project.Add(material);
+                    project.AddMaterial(material);
                     break;
                 }
                 default:
                     throw new NotSupportedException($"Unsupported project object type: {record.Type}");
             }
 
-            if (record.Metadata is not null && project.TryGet(id, out var restoredObject) && restoredObject is not null)
-                ApplyMetadata(restoredObject, record.Metadata);
+            if (record.Metadata is not null)
+            {
+                if (project.TryGet(id, out var restoredObject) && restoredObject is not null)
+                {
+                    ApplyMetadata(restoredObject, record.Metadata);
+                }
+                else if (project.TryGetMaterial(id, out var restoredMaterial) && restoredMaterial is not null)
+                {
+                    ApplyMetadata(restoredMaterial, record.Metadata);
+                }
+            }
         }
 
         return project;

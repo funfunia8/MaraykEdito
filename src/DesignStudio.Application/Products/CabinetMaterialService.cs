@@ -23,7 +23,7 @@ public sealed class CabinetMaterialService
         MaterialGrainDirection grainDirection)
     {
         ArgumentNullException.ThrowIfNull(project);
-        var existing = project.Objects.OfType<Material>().FirstOrDefault(x => string.Equals(x.Code, code, StringComparison.OrdinalIgnoreCase));
+        var existing = project.Materials.FirstOrDefault(x => string.Equals(x.Code, code, StringComparison.OrdinalIgnoreCase));
         if (existing is not null) return existing;
 
         var material = new Material(
@@ -35,7 +35,7 @@ public sealed class CabinetMaterialService
             Length.FromMillimeters(sheetHeightMm),
             Length.FromMillimeters(bandWidthMm),
             grainDirection);
-        project.Add(material);
+        project.AddMaterial(material);
         return material;
     }
 }
