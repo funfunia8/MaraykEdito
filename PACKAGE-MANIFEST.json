@@ -1,0 +1,10 @@
+{
+  "package": "DesignStudioV01-FoundationV2-28",
+  "purpose": "Foundation V2 migration: generalized design metadata/hierarchy, product boundary, manufacturing/documentation/pricing contracts, backward-compatible storage metadata",
+  "baseline": "DesignStudioV01-TechnicalFoundation-27",
+  "build_status": "Static validation completed; .NET SDK is unavailable in this environment, so compile/test execution is pending on a Windows/.NET machine.",
+  "next_gate": "Generalized manufacturing + documentation proof with a non-cabinet product, followed by professional 2D architecture/finishes foundation",
+  "test_coverage_added": [
+    "FoundationV2Tests: hierarchy, metadata round-trip, product independence, manufacturing reference, documentation reference, pricing calculation"
+  ]
+}
