@@ -44,6 +44,7 @@ public sealed class Cabinet : ProjectObject
     public CabinetConstructionMethod ConstructionMethod { get; private set; }
     public int ShelfCount { get; private set; }
     public int DoorCount { get; private set; }
+    public EntityId? ProductDefinitionId { get; private set; }
     public EntityId? CarcassMaterialId { get; private set; }
     public EntityId? BackMaterialId { get; private set; }
     public EntityId? DoorMaterialId { get; private set; }
@@ -81,6 +82,9 @@ public sealed class Cabinet : ProjectObject
         if (count < 0 || count > 32) throw new ArgumentOutOfRangeException(nameof(count));
         ShelfCount = count;
     }
+
+    public void SetProductDefinition(EntityId? productDefinitionId)
+        => ProductDefinitionId = productDefinitionId;
 
     public void SetPlacement(EntityId? hostRoomId, Point2D position, double rotationDegrees = 0)
     {

@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using DesignStudio.Domain.Geometry;
 using DesignStudio.Domain.Identity;
+using DesignStudio.Domain.Products;
 using DesignStudio.Domain.Project;
 using DesignStudio.Domain.Units;
 
@@ -41,6 +42,19 @@ public sealed class JsonProjectSerializer : IProjectSerializer
             Name = project.Name
         };
 
+        foreach (var definition in project.ProductDefinitions)
+        {
+            doc.ProductDefinitions.Add(new ProductDefinitionRecordV2
+            {
+                Id = definition.Id.Value.ToString("D"),
+                Code = definition.Code,
+                Name = definition.Name,
+                Category = definition.Category.ToString(),
+                Manufacturer = definition.Manufacturer,
+                Model = definition.Model
+            });
+        }
+
         foreach (var obj in project.Objects)
         {
             object data = obj switch
@@ -57,7 +71,8 @@ public sealed class JsonProjectSerializer : IProjectSerializer
                     c.ShelfCount, c.DoorCount,
                     ToNullableId(c.CarcassMaterialId), ToNullableId(c.BackMaterialId),
                     ToNullableId(c.DoorMaterialId), ToNullableId(c.EdgeBandMaterialId),
-                    ToNullableId(c.HostRoomId), c.Position.X, c.Position.Y, c.RotationDegrees),
+                    ToNullableId(c.HostRoomId), c.Position.X, c.Position.Y, c.RotationDegrees,
+                    ToNullableId(c.ProductDefinitionId)),
                 HardwareItem h => new HardwareData(
                     h.Code, h.Name, h.Kind, h.Unit),
                 Material m => new MaterialData(
@@ -85,6 +100,25 @@ public sealed class JsonProjectSerializer : IProjectSerializer
             throw new InvalidDataException("Invalid project id.");
 
         var project = Project.Restore(new EntityId(projectGuid), doc.Name);
+
+        foreach (var record in doc.ProductDefinitions)
+        {
+            if (!Guid.TryParse(record.Id, out var idGuid))
+                throw new InvalidDataException($"Invalid product definition id: {record.Id}");
+
+            if (!Enum.TryParse<ProductCategory>(record.Category, true, out var category))
+                throw new InvalidDataException($"Invalid product definition category: {record.Category}");
+
+            var definition = new ProductDefinition(
+                new EntityId(idGuid),
+                record.Code,
+                record.Name,
+                category,
+                Manufacturer: record.Manufacturer,
+                Model: record.Model);
+
+            project.AddProductDefinition(definition);
+        }
 
         foreach (var record in doc.Objects)
         {
@@ -158,6 +192,8 @@ public sealed class JsonProjectSerializer : IProjectSerializer
                         ParseNullableId(data.HostRoomId),
                         new Point2D(data.PositionX ?? 0, data.PositionY ?? 0),
                         data.RotationDegrees ?? 0);
+                    cabinet.SetProductDefinition(
+                        ParseNullableId(data.ProductDefinitionId));
                     project.Add(cabinet);
                     break;
                 }
@@ -260,7 +296,8 @@ public sealed class JsonProjectSerializer : IProjectSerializer
         string? HostRoomId = null,
         double? PositionX = null,
         double? PositionY = null,
-        double? RotationDegrees = null);
+        double? RotationDegrees = null,
+        string? ProductDefinitionId = null);
     private sealed record HardwareData(string Code, string Name, HardwareKind Kind, HardwareUnit Unit);
     private sealed record MaterialData(
         string Code, string Name, MaterialKind Kind, double ThicknessMm,
