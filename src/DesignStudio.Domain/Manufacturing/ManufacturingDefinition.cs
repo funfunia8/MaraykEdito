@@ -11,7 +11,20 @@ public sealed record ManufacturingDefinition(
     IReadOnlyList<ManufacturingPart> Parts,
     IReadOnlyList<ManufacturingHardware> Hardware,
     IReadOnlyList<ManufacturingOperation> Operations,
-    IReadOnlyList<ManufacturingAssembly> Assemblies);
+    IReadOnlyList<ManufacturingAssembly> Assemblies,
+    EntityId? ProductDefinitionId = null);
+
+[Flags]
+public enum ManufacturingEdgeFlags
+{
+    None = 0,
+    Left = 1,
+    Right = 2,
+    Top = 4,
+    Bottom = 8,
+    Front = 16,
+    Back = 32
+}
 
 public sealed record ManufacturingPart(
     string Code,
@@ -23,7 +36,9 @@ public sealed record ManufacturingPart(
     EntityId? MaterialId = null,
     EntityId? EdgeBandMaterialId = null,
     bool GrainAlongWidth = false,
-    string? SourceComponent = null);
+    string? SourceComponent = null,
+    Length? Depth = null,
+    ManufacturingEdgeFlags EdgeBanding = ManufacturingEdgeFlags.None);
 
 public sealed record ManufacturingHardware(
     string Code,
