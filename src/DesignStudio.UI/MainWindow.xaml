@@ -1,0 +1,160 @@
+<Window x:Class="DesignStudio.UI.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:DesignStudio.UI"
+        Title="{Binding Title}"
+        Width="1400"
+        Height="850"
+        MinWidth="1100"
+        MinHeight="650"
+        FlowDirection="{Binding CurrentLanguage, Converter={StaticResource LanguageFlowConverter}}">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="64"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="30"/>
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Padding="20,10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel>
+                    <TextBlock Text="{Binding Title}" FontSize="22" FontWeight="SemiBold"/>
+                    <TextBlock Text="{Binding Subtitle}" Opacity="0.65"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Content="{Binding NewProjectText}" Click="NewProject_Click" Margin="4"/>
+                    <Button Content="{Binding OpenProjectText}" Click="OpenProject_Click" Margin="4"/>
+                    <Button Content="{Binding SaveProjectText}" Click="SaveProject_Click" Margin="4"/>
+                    <Separator Width="12" Opacity="0"/>
+                    <Button Content="EN" Click="English_Click" Margin="2"/>
+                    <Button Content="AR" Click="Arabic_Click" Margin="2"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="220"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="280"/>
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Padding="12">
+                <StackPanel>
+                    <TextBlock Text="{Binding DesignText}" FontSize="16" FontWeight="SemiBold" Margin="4,4,4,14"/>
+                    <Button Content="{Binding CreateRoomText}" Click="CreateRoom_Click" Margin="2"/>
+                    <TextBlock Text="{Binding RoomsText}" Margin="4,10,4,2"/>
+                    <ComboBox x:Name="RoomsComboBox" ItemsSource="{Binding Rooms}" DisplayMemberPath="Name"
+                              SelectedValuePath="Id" SelectedValue="{Binding SelectedRoomId, Mode=OneWay}"
+                              SelectionChanged="RoomsComboBox_SelectionChanged" Margin="2"/>
+                    <Button Content="{Binding WallsText}" Margin="2"/>
+                    <Button Content="{Binding AddDoorText}" Margin="2" Click="AddDoor_Click"/>
+                    <Button Content="{Binding AddWindowText}" Margin="2" Click="AddWindow_Click"/>
+                    <Button Content="{Binding AddCabinetText}" Margin="2" Click="AddCabinet_Click"/>
+                    <Separator Height="12" Opacity="0"/>
+                    <Button Content="{Binding ExtendText}" Click="ExtendWall_Click" Margin="2"/>
+                    <Button Content="{Binding ShrinkText}" Click="ShrinkWall_Click" Margin="2"/>
+                    <Button Content="{Binding UndoText}" Click="Undo_Click" Margin="2"/>
+                    <Button Content="{Binding RedoText}" Click="Redo_Click" Margin="2"/>
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Column="1" Margin="8" BorderThickness="1" CornerRadius="4">
+                <Grid>
+                    <local:RoomPlanCanvas x:Name="RoomCanvas" Plan="{Binding ActivePlan}" SelectedWallIndex="{Binding SelectedWallIndex}" SelectedOpeningId="{Binding SelectedOpeningId}" SelectedCabinetId="{Binding SelectedCabinetId}" Margin="12" WallSelected="RoomCanvas_WallSelected" EndpointDragged="RoomCanvas_EndpointDragged" OpeningSelected="RoomCanvas_OpeningSelected" OpeningDragged="RoomCanvas_OpeningDragged" CabinetSelected="RoomCanvas_CabinetSelected" CabinetDragged="RoomCanvas_CabinetDragged"/>
+                    <TextBlock Text="{Binding DesignViewText}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                               FontSize="24" Opacity="0.15" IsHitTestVisible="False"/>
+                </Grid>
+            </Border>
+
+            <Border Grid.Column="2" Padding="12">
+                <StackPanel>
+                    <TextBlock Text="{Binding ModelText}" FontSize="16" FontWeight="SemiBold" Margin="4,4,4,14"/>
+                    <TextBlock Text="{Binding PropertiesText}" Margin="4"/>
+                    <TextBlock Text="{Binding RelationshipsText}" Margin="4"/>
+                    <TextBlock Text="{Binding ValidationText}" Margin="4"/>
+                    <Separator Margin="4,12"/>
+                    <TextBlock Text="{Binding SelectedWallText}" FontWeight="SemiBold" Margin="4,4,4,2"/>
+                    <TextBlock Margin="4">
+                        <Run Text="{Binding LengthText}"/>
+                        <Run Text=": "/>
+                        <Run Text="{Binding SelectedWallLengthMm, StringFormat={}{0:0} mm}"/>
+                    </TextBlock>
+                    <Separator Margin="4,10"/>
+                    <TextBlock Text="{Binding SelectedOpeningText}" FontWeight="SemiBold" Margin="4,4,4,2"/>
+                    <TextBlock Margin="4">
+                        <Run Text="{Binding OpeningKindText}"/>
+                        <Run Text=": "/>
+                        <Run Text="{Binding SelectedOpeningKind}"/>
+                    </TextBlock>
+                    <TextBlock Margin="4">
+                        <Run Text="{Binding OffsetText}"/>
+                        <Run Text=": "/>
+                        <Run Text="{Binding SelectedOpeningOffsetMm, StringFormat={}{0:0} mm}"/>
+                    </TextBlock>
+                    <TextBlock Margin="4">
+                        <Run Text="{Binding WidthText}"/>
+                        <Run Text=": "/>
+                        <Run Text="{Binding SelectedOpeningWidthMm, StringFormat={}{0:0} mm}"/>
+                    </TextBlock>
+                    <Separator Margin="4,12"/>
+                    <TextBlock Text="{Binding SelectedCabinetText}" FontWeight="SemiBold" Margin="4,4,4,2" Visibility="{Binding IsCabinetSelected, Converter={StaticResource BooleanVisibilityConverter}}"/>
+                    <StackPanel Visibility="{Binding IsCabinetSelected, Converter={StaticResource BooleanVisibilityConverter}}" Margin="4,4,4,0">
+                        <TextBlock Margin="0,2">
+                            <Run Text="{Binding CabinetWidthText}"/>
+                            <Run Text=": "/>
+                            <Run Text="{Binding SelectedCabinetWidthMm, StringFormat={}{0:0} mm}"/>
+                        </TextBlock>
+                        <TextBlock Margin="0,2">
+                            <Run Text="{Binding CabinetDepthText}"/>
+                            <Run Text=": "/>
+                            <Run Text="{Binding SelectedCabinetDepthMm, StringFormat={}{0:0} mm}"/>
+                        </TextBlock>
+                        <TextBlock Margin="0,2">
+                            <Run Text="{Binding CabinetPositionText}"/>
+                            <Run Text=": "/>
+                            <Run Text="{Binding SelectedCabinetPositionText}"/>
+                        </TextBlock>
+                        <TextBlock Margin="0,2">
+                            <Run Text="{Binding CabinetRotationText}"/>
+                            <Run Text=": "/>
+                            <Run Text="{Binding SelectedCabinetRotationDegrees, StringFormat={}{0:0.#}°}"/>
+                        </TextBlock>
+                    </StackPanel>
+
+                    <Grid IsEnabled="{Binding IsOpeningSelected}" Margin="4,8,4,0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="95"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding WidthText}" Margin="0,2"/>
+                        <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding OpeningWidthInput, UpdateSourceTrigger=LostFocus}" Margin="4,2"/>
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="{Binding HeightText}" Margin="0,2"/>
+                        <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding OpeningHeightInput, UpdateSourceTrigger=LostFocus}" Margin="4,2"/>
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="{Binding SillText}" Margin="0,2"
+                                   Visibility="{Binding SelectedOpeningKind, Converter={StaticResource WindowVisibilityConverter}}"/>
+                        <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding OpeningSillInput, UpdateSourceTrigger=LostFocus}" Margin="4,2"
+                                 Visibility="{Binding SelectedOpeningKind, Converter={StaticResource WindowVisibilityConverter}}"/>
+                        <Button Grid.Row="3" Grid.ColumnSpan="2" Content="{Binding ApplyOpeningText}" Click="ApplyOpeningDimensions_Click" Margin="4,6,4,0"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <Border Grid.Row="2" Padding="10,4">
+            <TextBlock Text="{Binding StatusText}" Opacity="0.7"/>
+        </Border>
+    </Grid>
+</Window>

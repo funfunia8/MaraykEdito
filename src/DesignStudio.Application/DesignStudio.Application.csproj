@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\DesignStudio.Domain\DesignStudio.Domain.csproj" />
+    <ProjectReference Include="..\DesignStudio.Geometry\DesignStudio.Geometry.csproj" />
+    <ProjectReference Include="..\DesignStudio.Localization\DesignStudio.Localization.csproj" />
+    <ProjectReference Include="..\DesignStudio.Manufacturing\DesignStudio.Manufacturing.csproj" />
+    <ProjectReference Include="..\DesignStudio.Documentation\DesignStudio.Documentation.csproj" />
+    <ProjectReference Include="..\DesignStudio.Pricing\DesignStudio.Pricing.csproj" />
+  </ItemGroup>
+</Project>
