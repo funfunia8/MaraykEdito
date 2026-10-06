@@ -5,9 +5,12 @@ namespace DesignStudio.Domain.Project;
 
 public sealed class Room : ProjectObject
 {
-    private readonly List<EntityId> _wallIds = new();
+    private readonly RoomBoundary _boundary = new();
 
-    public Room(string name, EntityId? id = null, EntityId? floorId = null) : base(id)
+    public Room(
+        string name,
+        EntityId? id = null,
+        EntityId? floorId = null) : base(id)
     {
         Name = string.IsNullOrWhiteSpace(name) ? "Room" : name;
         SetCategory(ObjectCategory.Architecture);
@@ -15,21 +18,29 @@ public sealed class Room : ProjectObject
     }
 
     public override string Type => "Room";
+
     public string Name { get; private set; }
-    public Length Height { get; private set; } = Length.FromMillimeters(2700);
+
+    public Length Height { get; private set; } =
+        Length.FromMillimeters(2700);
+
     public EntityId? FloorId => ParentId;
 
-    public IReadOnlyList<EntityId> WallIds => _wallIds;
+    public RoomBoundary Boundary => _boundary;
+
+    // Compatibility projection for the existing project/storage API.
+    public IReadOnlyList<EntityId> WallIds => _boundary.OuterLoop.WallIds;
 
     public void SetHeight(Length height)
     {
-        if (height.Millimeters <= 0) throw new ArgumentOutOfRangeException(nameof(height));
+        if (height.Millimeters <= 0)
+            throw new ArgumentOutOfRangeException(nameof(height));
+
         Height = height;
     }
 
     public void AddWall(EntityId wallId)
     {
-        if (!_wallIds.Contains(wallId))
-            _wallIds.Add(wallId);
+        _boundary.OuterLoop.AddWall(wallId);
     }
 }

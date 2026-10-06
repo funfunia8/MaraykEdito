@@ -89,18 +89,38 @@ Current regression status:
 
 `142/142 tests passing`
 
-The current implementation still treats `Room.WallIds` as one ordered boundary loop. Internal partitions, multi-loop rooms, holes, and more advanced wall-junction semantics are intentionally outside this gate and require an explicit room-boundary model before implementation.
+The current implementation still treats the room boundary as a single ordered outer loop, but the boundary model is now explicit rather than implicit.
+
+## Room Boundary Semantics gate
+
+The initial Room Boundary Semantics gate is now implemented.
+
+Completed capabilities include:
+
+- explicit `RoomBoundary` domain concept
+- explicit `BoundaryLoop` domain concept
+- explicit `OuterLoop` on each room boundary
+- preservation of wall ordering within the outer boundary loop
+- `Room.WallIds` retained as a compatibility projection of `Boundary.OuterLoop.WallIds`
+- existing storage format preserved without a schema migration
+- existing room consumers continue to operate through the compatibility projection
+
+Current regression status:
+
+`146/146 tests passing`
+
+The current boundary model intentionally supports one explicit outer loop only. Polygon orientation, signed-area validation, internal partitions, multiple boundary loops, holes/openings as first-class loops, and advanced wall-junction semantics are not yet complete.
 
 ## Next gate
 
-The next implementation gate is **Room Boundary Semantics and Complex Spaces**:
+The next implementation gate is **Polygon Orientation and Signed Area**:
 
-- define explicit boundary-wall semantics
-- define internal partition semantics
-- support non-rectangular rooms as a first-class model
-- establish polygon orientation and signed-area rules
-- define multi-loop and opening/hole semantics
-- define valid wall-junction types
-- ensure editing and regeneration remain deterministic for complex room boundaries
+- define the domain signed-area calculation
+- establish the outer-loop orientation rule
+- validate zero-area and degenerate boundaries
+- integrate orientation validation into room geometry validation
+- add regression coverage for clockwise, counter-clockwise, and degenerate loops
+
+Only after these semantics are stable should the model expand to internal partitions, multiple loops, holes, and more advanced wall-junction types.
 
 No visual polish is considered complete until these underlying spatial semantics are explicit and stable.
