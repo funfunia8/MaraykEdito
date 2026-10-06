@@ -25,13 +25,51 @@ public sealed class JsonProjectSerializer : IProjectSerializer
 
     public async Task<Project> LoadAsync(Stream source, CancellationToken cancellationToken = default)
     {
-        var document = await JsonSerializer.DeserializeAsync<ProjectDocumentV2>(source, _options, cancellationToken)
-            ?? throw new InvalidDataException("Project document is empty.");
+        using var json = await JsonDocument.ParseAsync(
+            source,
+            cancellationToken: cancellationToken);
 
-        if (document.SchemaVersion is not (1 or 2))
-            throw new NotSupportedException($"Unsupported project schema version: {document.SchemaVersion}");
+        if (!json.RootElement.TryGetProperty("schemaVersion", out var schemaVersionElement) ||
+            !schemaVersionElement.TryGetInt32(out var schemaVersion))
+        {
+            throw new InvalidDataException(
+                "Project document does not contain a valid schema version.");
+        }
 
-        return FromDocument(document);
+        return schemaVersion switch
+        {
+            1 => FromDocument(
+                MigrateV1(
+                    json.RootElement.Deserialize<ProjectDocumentV1>(_options)
+                    ?? throw new InvalidDataException("Project document is invalid."))),
+
+            2 => FromDocument(
+                json.RootElement.Deserialize<ProjectDocumentV2>(_options)
+                ?? throw new InvalidDataException("Project document is invalid.")),
+
+            _ => throw new NotSupportedException(
+                $"Unsupported project schema version: {schemaVersion}. Supported schema versions: 1 and 2.")
+        };
+    }
+
+    private static ProjectDocumentV2 MigrateV1(ProjectDocumentV1 v1)
+    {
+        return new ProjectDocumentV2
+        {
+            SchemaVersion = 2,
+            ProjectId = v1.ProjectId,
+            Name = v1.Name,
+            ProductDefinitions = new List<ProductDefinitionRecordV2>(),
+            Objects = v1.Objects
+                .Select(record => new ProjectObjectRecordV2
+                {
+                    Id = record.Id,
+                    Type = record.Type,
+                    Data = record.Data,
+                    Metadata = null
+                })
+                .ToList()
+        };
     }
 
     private ProjectDocumentV2 ToDocument(Project project)
