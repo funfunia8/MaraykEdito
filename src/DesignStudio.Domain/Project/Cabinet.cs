@@ -49,7 +49,7 @@ public sealed class Cabinet : ProjectObject
     public EntityId? BackMaterialId { get; private set; }
     public EntityId? DoorMaterialId { get; private set; }
     public EntityId? EdgeBandMaterialId { get; private set; }
-    public EntityId? HostRoomId { get; private set; }
+    public EntityId? HostRoomId => ParentId;
     public Point2D Position => Placement.Position;
     public double RotationDegrees => Placement.RotationDegrees;
 
@@ -91,7 +91,6 @@ public sealed class Cabinet : ProjectObject
         if (double.IsNaN(rotationDegrees) || double.IsInfinity(rotationDegrees))
             throw new ArgumentOutOfRangeException(nameof(rotationDegrees));
 
-        HostRoomId = hostRoomId;
         SetParent(hostRoomId);
         SetPlacement(new Placement2D(position, rotationDegrees));
     }

@@ -153,7 +153,10 @@ public sealed class CabinetProductionDrawingTests
                 .Where(
                     x =>
                         x.Type == DrawingPrimitiveType.Text &&
-                        x.Text is "Door 1" or "Door 2")
+                        x.Text.StartsWith("Door ",
+                            StringComparison.Ordinal) &&
+                        x.Text.Length > 5 &&
+                        int.TryParse(x.Text.AsSpan(5), out _))
                 .Select(x => x.Text)
                 .ToList();
 
