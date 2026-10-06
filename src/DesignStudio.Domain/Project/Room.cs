@@ -11,14 +11,13 @@ public sealed class Room : ProjectObject
     {
         Name = string.IsNullOrWhiteSpace(name) ? "Room" : name;
         SetCategory(ObjectCategory.Architecture);
-        FloorId = floorId;
         SetParent(floorId);
     }
 
     public override string Type => "Room";
     public string Name { get; private set; }
     public Length Height { get; private set; } = Length.FromMillimeters(2700);
-    public EntityId? FloorId { get; private set; }
+    public EntityId? FloorId => ParentId;
 
     public IReadOnlyList<EntityId> WallIds => _wallIds;
 
