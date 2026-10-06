@@ -24,6 +24,45 @@ public sealed class RoomEditAndCommandTests
     }
 
     [Fact]
+    public void MoveWallEndpointRejectsCollapsedConnectedWallAtomically()
+    {
+        var project = new ProjectModel("Test");
+        var service = new IntelligentRoomService();
+        var room = service.CreateRectangularRoom(
+            project,
+            "Room",
+            5000,
+            4000);
+
+        var first = project.Get<Wall>(room.WallIds[0]);
+        var second = project.Get<Wall>(room.WallIds[1]);
+
+        var originalFirstStart = first.Start;
+        var originalFirstEnd = first.End;
+        var originalSecondStart = second.Start;
+        var originalSecondEnd = second.End;
+
+        var command = new MoveWallEndpointCommand(
+            project,
+            room,
+            first.Id,
+            moveStart: false,
+            newPoint: second.End);
+
+        Assert.Throws<ArgumentException>(() => command.Execute());
+
+        Assert.Equal(originalFirstStart.X, first.Start.X, 3);
+        Assert.Equal(originalFirstStart.Y, first.Start.Y, 3);
+        Assert.Equal(originalFirstEnd.X, first.End.X, 3);
+        Assert.Equal(originalFirstEnd.Y, first.End.Y, 3);
+
+        Assert.Equal(originalSecondStart.X, second.Start.X, 3);
+        Assert.Equal(originalSecondStart.Y, second.Start.Y, 3);
+        Assert.Equal(originalSecondEnd.X, second.End.X, 3);
+        Assert.Equal(originalSecondEnd.Y, second.End.Y, 3);
+    }
+
+    [Fact]
     public void InvalidOpeningIsRejected()
     {
         var project = new ProjectModel("Test");

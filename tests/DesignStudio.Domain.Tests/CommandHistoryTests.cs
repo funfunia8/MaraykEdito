@@ -100,4 +100,54 @@ public sealed class CommandHistoryTests
             wall.LengthMm,
             3);
     }
+
+    [Fact]
+    public void ResizeActiveWallPreservesTopologyAndUndoRedo()
+    {
+        var state = new WorkspaceState();
+        var workspace = new WorkspaceController(state);
+
+        workspace.CreateProject("Test");
+        workspace.CreateDefaultRoom();
+
+        var project = state.ActiveProject!;
+        var room = state.ActiveRoom!;
+
+        var first = project.Get<Wall>(room.WallIds[0]);
+        var second = project.Get<Wall>(room.WallIds[1]);
+
+        var originalFirstEnd = first.End;
+        var originalSecondStart = second.Start;
+
+        var newEnd = new Point2D(6200, 0);
+
+        workspace.ResizeActiveWall(0, newEnd);
+
+        Assert.Equal(newEnd.X, first.End.X, 3);
+        Assert.Equal(newEnd.Y, first.End.Y, 3);
+
+        Assert.Equal(newEnd.X, second.Start.X, 3);
+        Assert.Equal(newEnd.Y, second.Start.Y, 3);
+
+        Assert.True(workspace.CanUndo);
+
+        workspace.Undo();
+
+        Assert.Equal(originalFirstEnd.X, first.End.X, 3);
+        Assert.Equal(originalFirstEnd.Y, first.End.Y, 3);
+
+        Assert.Equal(originalSecondStart.X, second.Start.X, 3);
+        Assert.Equal(originalSecondStart.Y, second.Start.Y, 3);
+
+        Assert.True(workspace.CanRedo);
+
+        workspace.Redo();
+
+        Assert.Equal(newEnd.X, first.End.X, 3);
+        Assert.Equal(newEnd.Y, first.End.Y, 3);
+
+        Assert.Equal(newEnd.X, second.Start.X, 3);
+        Assert.Equal(newEnd.Y, second.Start.Y, 3);
+    }
+
 }

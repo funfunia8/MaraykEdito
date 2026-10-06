@@ -37,16 +37,44 @@ Schema 2 documents are loaded directly through `ProjectDocumentV2`.
 
 The current compatibility contract is limited to schema versions 1 and 2. Future schema versions must introduce an explicit migration before they are accepted.
 
+
+## Intelligent Room Core gate
+
+The Intelligent Room Core baseline is now implemented and covered by regression tests.
+
+Completed capabilities include:
+
+- wall geometry editing through commands
+- topology-aware wall endpoint movement that preserves connected wall anchors
+- room boundary connectivity validation
+- room boundary closure validation
+- duplicate wall-reference detection
+- hosted door/window bounds validation
+- opening overlap validation
+- deterministic 2D room geometry regeneration
+- first 3D room representation through the geometry abstraction
+- dependent-object propagation after wall changes
+- command-based undo/redo
+- rollback integrity for invalid workspace edits
+- atomic wall-endpoint mutation so a failed edit does not leave partial geometry changes
+- explicit JSON schema 1 -> schema 2 migration
+- save/reopen relationship preservation through the existing project storage baseline
+
+Current regression status:
+
+`124/124 tests passing`
+
+The current topology implementation intentionally validates connectivity and closure only. Advanced geometric validity such as self-intersection, non-manifold wall joins, and more complex boundary semantics is not yet considered complete and must be handled by a later dedicated geometry-integrity gate.
+
 ## Next gate
 
-The next implementation gate is the **Intelligent Room Core**:
+The next implementation gate is **Advanced Room Geometry Integrity**:
 
-- edit wall geometry
-- validate hosted door/window placement
-- propagate wall changes to dependent objects
-- generate deterministic 2D geometry
-- generate a first 3D representation through the geometry abstraction
-- undo/redo through commands
-- save/reopen without losing relationships
+- detect non-adjacent wall intersections
+- detect invalid/self-intersecting room boundaries
+- define valid wall-junction semantics
+- distinguish room boundary walls from internal partitions
+- establish robust geometric tolerances and normalization rules
+- ensure editing and regeneration remain deterministic for non-rectangular rooms
 
-No visual polish is considered complete until this gate passes.
+No visual polish is considered complete until the underlying room geometry remains valid under these cases.

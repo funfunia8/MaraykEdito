@@ -127,13 +127,23 @@ public sealed class WorkspaceController
         var project = State.ActiveProject ?? throw new InvalidOperationException("No active project.");
         var room = State.ActiveRoom ?? throw new InvalidOperationException("No active room.");
         var wall = project.Get<DesignStudio.Domain.Project.Wall>(room.WallIds[wallIndex]);
-        _history.Execute(new ResizeWallCommand(wall, newEnd));
+
+        var command = new MoveWallEndpointCommand(
+            project,
+            room,
+            wall.Id,
+            moveStart: false,
+            newPoint: newEnd);
+
+        _history.Execute(command);
+
         var validation = _rooms.Validate(project, room);
         if (!validation.IsValid)
         {
             _history.RollbackLastExecution();
             throw new InvalidOperationException(string.Join(Environment.NewLine, validation.Issues.Select(x => x.Message)));
         }
+
         State.SetDerived(_regeneration.Regenerate(project, room));
         State.MarkDirty();
     }
