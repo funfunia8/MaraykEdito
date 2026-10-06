@@ -7,7 +7,7 @@
         Height="850"
         MinWidth="1100"
         MinHeight="650"
-        FlowDirection="{Binding CurrentLanguage, Converter={StaticResource LanguageFlowConverter}}">
+        FlowDirection="{Binding CurrentLanguage, Converter={StaticResource LanguageFlowConverter}}" PreviewKeyDown="MainWindow_ProductionPreviewKeyDown">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="64"/>
@@ -82,49 +82,49 @@
                     <Separator Margin="4,12"/>
                     <TextBlock Text="{Binding SelectedWallText}" FontWeight="SemiBold" Margin="4,4,4,2"/>
                     <TextBlock Margin="4">
-                        <Run Text="{Binding LengthText}"/>
+                        <Run Text="{Binding LengthText, Mode=OneWay}"/>
                         <Run Text=": "/>
-                        <Run Text="{Binding SelectedWallLengthMm, StringFormat={}{0:0} mm}"/>
+                        <Run Text="{Binding SelectedWallLengthMm, Mode=OneWay, StringFormat={}{0:0} mm}"/>
                     </TextBlock>
                     <Separator Margin="4,10"/>
                     <TextBlock Text="{Binding SelectedOpeningText}" FontWeight="SemiBold" Margin="4,4,4,2"/>
                     <TextBlock Margin="4">
-                        <Run Text="{Binding OpeningKindText}"/>
+                        <Run Text="{Binding OpeningKindText, Mode=OneWay}"/>
                         <Run Text=": "/>
-                        <Run Text="{Binding SelectedOpeningKind}"/>
+                        <Run Text="{Binding SelectedOpeningKind, Mode=OneWay}"/>
                     </TextBlock>
                     <TextBlock Margin="4">
-                        <Run Text="{Binding OffsetText}"/>
+                        <Run Text="{Binding OffsetText, Mode=OneWay}"/>
                         <Run Text=": "/>
-                        <Run Text="{Binding SelectedOpeningOffsetMm, StringFormat={}{0:0} mm}"/>
+                        <Run Text="{Binding SelectedOpeningOffsetMm, StringFormat={}{0:0} mm, Mode=OneWay}"/>
                     </TextBlock>
                     <TextBlock Margin="4">
-                        <Run Text="{Binding WidthText}"/>
+                        <Run Text="{Binding WidthText, Mode=OneWay}"/>
                         <Run Text=": "/>
-                        <Run Text="{Binding SelectedOpeningWidthMm, StringFormat={}{0:0} mm}"/>
+                        <Run Text="{Binding SelectedOpeningWidthMm, StringFormat={}{0:0} mm, Mode=OneWay}"/>
                     </TextBlock>
                     <Separator Margin="4,12"/>
                     <TextBlock Text="{Binding SelectedCabinetText}" FontWeight="SemiBold" Margin="4,4,4,2" Visibility="{Binding IsCabinetSelected, Converter={StaticResource BooleanVisibilityConverter}}"/>
                     <StackPanel Visibility="{Binding IsCabinetSelected, Converter={StaticResource BooleanVisibilityConverter}}" Margin="4,4,4,0">
                         <TextBlock Margin="0,2">
-                            <Run Text="{Binding CabinetWidthText}"/>
+                            <Run Text="{Binding CabinetWidthText, Mode=OneWay}"/>
                             <Run Text=": "/>
-                            <Run Text="{Binding SelectedCabinetWidthMm, StringFormat={}{0:0} mm}"/>
+                            <Run Text="{Binding SelectedCabinetWidthMm, StringFormat={}{0:0} mm, Mode=OneWay}"/>
                         </TextBlock>
                         <TextBlock Margin="0,2">
-                            <Run Text="{Binding CabinetDepthText}"/>
+                            <Run Text="{Binding CabinetDepthText, Mode=OneWay}"/>
                             <Run Text=": "/>
-                            <Run Text="{Binding SelectedCabinetDepthMm, StringFormat={}{0:0} mm}"/>
+                            <Run Text="{Binding SelectedCabinetDepthMm, StringFormat={}{0:0} mm, Mode=OneWay}"/>
                         </TextBlock>
                         <TextBlock Margin="0,2">
-                            <Run Text="{Binding CabinetPositionText}"/>
+                            <Run Text="{Binding CabinetPositionText, Mode=OneWay}"/>
                             <Run Text=": "/>
-                            <Run Text="{Binding SelectedCabinetPositionText}"/>
+                            <Run Text="{Binding SelectedCabinetPositionText, Mode=OneWay}"/>
                         </TextBlock>
                         <TextBlock Margin="0,2">
-                            <Run Text="{Binding CabinetRotationText}"/>
+                            <Run Text="{Binding CabinetRotationText, Mode=OneWay}"/>
                             <Run Text=": "/>
-                            <Run Text="{Binding SelectedCabinetRotationDegrees, StringFormat={}{0:0.#}°}"/>
+                            <Run Text="{Binding SelectedCabinetRotationDegrees, StringFormat={}{0:0.#}°, Mode=OneWay}"/>
                         </TextBlock>
                     </StackPanel>
 
