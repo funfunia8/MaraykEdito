@@ -9,13 +9,13 @@ public sealed class Window : ProjectObject
         : base(id)
     {
         SetCategory(ObjectCategory.Opening);
-        HostWallId = hostWallId;
         SetParent(hostWallId);
         SetDimensions(offsetFromWallStart, width, height, sillHeight);
     }
 
     public override string Type => "Window";
-    public EntityId HostWallId { get; private set; }
+    public EntityId HostWallId => ParentId
+    ?? throw new InvalidOperationException("Window must have a host wall.");
     public Length OffsetFromWallStart { get; private set; }
     public Length Width { get; private set; }
     public Length Height { get; private set; }
