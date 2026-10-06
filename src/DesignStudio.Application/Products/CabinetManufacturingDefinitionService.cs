@@ -116,16 +116,18 @@ public sealed class CabinetManufacturingDefinitionService
         {
             ["widthMm"] = Format(spec.GrooveWidth.Millimeters),
             ["depthMm"] = Format(spec.GrooveDepth.Millimeters),
-            ["offsetFromRearMm"] = Format(spec.GrooveOffsetFromRear.Millimeters)
+            ["offsetFromRearMm"] = Format(
+                spec.GrooveOffsetFromRear.Millimeters)
         };
 
         return new[]
         {
             new ManufacturingOperation(
-                "BACK-GROOVE",
-                "Captured back groove",
-                "Groove",
-                parameters)
+                Code: "BACK-GROOVE",
+                Name: "Captured back groove",
+                OperationType: "Groove",
+                PartCodes: new[] { "BACK" },
+                Parameters: parameters)
         };
     }
 

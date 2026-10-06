@@ -50,6 +50,7 @@ public sealed record ManufacturingOperation(
     string Code,
     string Name,
     string OperationType,
+    IReadOnlyList<string> PartCodes,
     IReadOnlyDictionary<string, string>? Parameters = null);
 
 public sealed record ManufacturingAssembly(

@@ -159,7 +159,7 @@ public sealed class CabinetManufacturingDefinitionTests
     }
 
     [Fact]
-    public void Build_CreatesGenericGrooveOperation()
+    public void Build_CreatesGenericGrooveOperationTargetingBackPart()
     {
         var project = new ProjectModel(
             "Cabinet Groove Manufacturing");
@@ -182,6 +182,10 @@ public sealed class CabinetManufacturingDefinitionTests
         Assert.Equal(
             "Groove",
             operation.OperationType);
+
+        Assert.Contains(
+            "BACK",
+            operation.PartCodes);
 
         Assert.NotNull(operation.Parameters);
 
