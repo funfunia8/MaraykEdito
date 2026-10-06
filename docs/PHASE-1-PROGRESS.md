@@ -93,7 +93,7 @@ The current implementation still treats the room boundary as a single ordered ou
 
 ## Room Boundary Semantics gate
 
-The initial Room Boundary Semantics gate is now implemented.
+The initial Room Boundary Semantics gate is implemented.
 
 Completed capabilities include:
 
@@ -104,23 +104,28 @@ Completed capabilities include:
 - `Room.WallIds` retained as a compatibility projection of `Boundary.OuterLoop.WallIds`
 - existing storage format preserved without a schema migration
 - existing room consumers continue to operate through the compatibility projection
+- domain signed-area calculation
+- explicit polygon orientation classification
+- outer-loop counter-clockwise orientation validation
+- degenerate and near-zero-area boundary rejection
+- integration of orientation validation into room validation
+- regression coverage for clockwise, counter-clockwise, concave, and degenerate boundaries
 
 Current regression status:
 
-`146/146 tests passing`
+`159/159 tests passing`
 
-The current boundary model intentionally supports one explicit outer loop only. Polygon orientation, signed-area validation, internal partitions, multiple boundary loops, holes/openings as first-class loops, and advanced wall-junction semantics are not yet complete.
+The current boundary model intentionally supports one explicit outer loop only. Internal partitions, multiple boundary loops, holes/openings as first-class loops, and advanced wall-junction semantics are not yet complete.
 
 ## Next gate
 
-The next implementation gate is **Polygon Orientation and Signed Area**:
+The next implementation gate is **Complex Spaces and Advanced Boundary Semantics**:
 
-- define the domain signed-area calculation
-- establish the outer-loop orientation rule
-- validate zero-area and degenerate boundaries
-- integrate orientation validation into room geometry validation
-- add regression coverage for clockwise, counter-clockwise, and degenerate loops
-
-Only after these semantics are stable should the model expand to internal partitions, multiple loops, holes, and more advanced wall-junction types.
+- define internal partition semantics
+- support multiple boundary loops
+- define hole/void semantics as first-class spatial boundaries
+- establish valid wall-junction types and connectivity rules
+- support non-rectangular and compound spaces without weakening existing boundary integrity rules
+- ensure editing, validation, serialization, and regeneration remain deterministic for complex boundaries
 
 No visual polish is considered complete until these underlying spatial semantics are explicit and stable.

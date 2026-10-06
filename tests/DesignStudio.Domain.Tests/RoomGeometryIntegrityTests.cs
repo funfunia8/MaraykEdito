@@ -8,7 +8,7 @@ namespace DesignStudio.Domain.Tests;
 public sealed class RoomGeometryIntegrityTests
 {
     [Fact]
-    public void SimpleClosedRoomHasNoGeometryIntegrityErrors()
+    public void SimpleClosedRoomHasNoBoundaryGeometryErrors()
     {
         var project = new ProjectModel("Geometry");
         var room = new Room("Room");
@@ -24,7 +24,10 @@ public sealed class RoomGeometryIntegrityTests
 
         Assert.DoesNotContain(
             validation.Issues,
-            issue => issue.Code == "ROOM-006");
+            issue => issue.Code is
+                "ROOM-006" or
+                "ROOM-007" or
+                "ROOM-008");
     }
 
     [Fact]
@@ -128,6 +131,71 @@ public sealed class RoomGeometryIntegrityTests
                 issue.Code == "ROOM-006" &&
                 issue.Message.Contains(first.Id.ToString()) &&
                 issue.Message.Contains(third.Id.ToString()));
+    }
+
+    [Fact]
+    public void ClockwiseOuterBoundaryIsRejected()
+    {
+        var project = new ProjectModel("Geometry");
+        var room = new Room("Room");
+
+        AddWall(project, room, new Point2D(0, 0), new Point2D(0, 4000));
+        AddWall(project, room, new Point2D(0, 4000), new Point2D(5000, 4000));
+        AddWall(project, room, new Point2D(5000, 4000), new Point2D(5000, 0));
+        AddWall(project, room, new Point2D(5000, 0), new Point2D(0, 0));
+
+        project.Add(room);
+
+        var validation = new RoomValidationService().Validate(project, room);
+
+        Assert.Contains(
+            validation.Issues,
+            issue => issue.Code == "ROOM-007");
+    }
+
+    [Fact]
+    public void NearZeroAreaOuterBoundaryIsRejectedAsDegenerate()
+    {
+        var project = new ProjectModel("Geometry");
+        var room = new Room("Room");
+
+        AddWall(project, room, new Point2D(0, 0), new Point2D(5000, 0));
+        AddWall(project, room, new Point2D(5000, 0), new Point2D(5000, 0.0015));
+        AddWall(project, room, new Point2D(5000, 0.0015), new Point2D(0, 0.0015));
+        AddWall(project, room, new Point2D(0, 0.0015), new Point2D(0, 0));
+
+        project.Add(room);
+
+        var validation = new RoomValidationService().Validate(project, room);
+
+        Assert.Contains(
+            validation.Issues,
+            issue => issue.Code == "ROOM-008");
+    }
+
+    [Fact]
+    public void ConcaveCounterClockwiseRoomHasValidOuterBoundaryOrientation()
+    {
+        var project = new ProjectModel("Geometry");
+        var room = new Room("Room");
+
+        AddWall(project, room, new Point2D(0, 0), new Point2D(5000, 0));
+        AddWall(project, room, new Point2D(5000, 0), new Point2D(5000, 2000));
+        AddWall(project, room, new Point2D(5000, 2000), new Point2D(3000, 2000));
+        AddWall(project, room, new Point2D(3000, 2000), new Point2D(3000, 4000));
+        AddWall(project, room, new Point2D(3000, 4000), new Point2D(0, 4000));
+        AddWall(project, room, new Point2D(0, 4000), new Point2D(0, 0));
+
+        project.Add(room);
+
+        var validation = new RoomValidationService().Validate(project, room);
+
+        Assert.DoesNotContain(
+            validation.Issues,
+            issue => issue.Code is
+                "ROOM-006" or
+                "ROOM-007" or
+                "ROOM-008");
     }
 
     private static Wall AddWall(

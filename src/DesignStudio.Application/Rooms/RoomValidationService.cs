@@ -48,8 +48,11 @@ public sealed class RoomValidationService
             }
         }
 
-        ValidateRoomTopology(result, room, walls);
-        ValidateRoomBoundaryGeometry(result, room, walls);
+        var topologyValid = ValidateRoomTopology(result, room, walls);
+        var geometryValid = ValidateRoomBoundaryGeometry(result, room, walls);
+
+        if (topologyValid && geometryValid)
+            ValidateRoomBoundaryOrientation(result, walls);
 
         foreach (var door in project.Objects.OfType<Door>())
         {
@@ -102,18 +105,19 @@ public sealed class RoomValidationService
         return result;
     }
 
-    private static void ValidateRoomTopology(
+    private static bool ValidateRoomTopology(
         ValidationResult result,
         Room room,
         IReadOnlyList<Wall> walls)
     {
         if (walls.Count != room.WallIds.Count)
-            return;
+            return false;
 
         if (walls.Count < 3)
-            return;
+            return false;
 
         var tolerance = RoomConstraints.GeometryToleranceMm;
+        var valid = true;
 
         for (var index = 0; index < walls.Count - 1; index++)
         {
@@ -125,6 +129,8 @@ public sealed class RoomValidationService
                 result.Error(
                     "ROOM-004",
                     $"Room boundary is disconnected between walls {current.Id} and {next.Id}.");
+
+                valid = false;
             }
         }
 
@@ -136,21 +142,26 @@ public sealed class RoomValidationService
             result.Error(
                 "ROOM-005",
                 $"Room boundary is not closed between walls {last.Id} and {first.Id}.");
+
+            valid = false;
         }
+
+        return valid;
     }
 
-    private static void ValidateRoomBoundaryGeometry(
+    private static bool ValidateRoomBoundaryGeometry(
         ValidationResult result,
         Room room,
         IReadOnlyList<Wall> walls)
     {
         if (walls.Count != room.WallIds.Count)
-            return;
+            return false;
 
         if (walls.Count < 3)
-            return;
+            return false;
 
         var tolerance = RoomConstraints.GeometryToleranceMm;
+        var valid = true;
 
         for (var firstIndex = 0; firstIndex < walls.Count; firstIndex++)
         {
@@ -179,6 +190,8 @@ public sealed class RoomValidationService
                         result.Error(
                             "ROOM-006",
                             $"Adjacent room boundary walls {first.Id} and {second.Id} have an invalid geometric relationship: {relation}.");
+
+                        valid = false;
                     }
 
                     continue;
@@ -189,8 +202,47 @@ public sealed class RoomValidationService
                     result.Error(
                         "ROOM-006",
                         $"Room boundary walls {first.Id} and {second.Id} intersect or overlap: {relation}.");
+
+                    valid = false;
                 }
             }
+        }
+
+        return valid;
+    }
+
+    private static void ValidateRoomBoundaryOrientation(
+        ValidationResult result,
+        IReadOnlyList<Wall> walls)
+    {
+        var points = walls
+            .Select(wall => wall.Start)
+            .ToArray();
+
+        var orientation = PolygonGeometry.GetOrientation(
+            points,
+            RoomConstraints.GeometryToleranceMm);
+
+        switch (orientation)
+        {
+            case PolygonOrientation.CounterClockwise:
+                return;
+
+            case PolygonOrientation.Clockwise:
+                result.Error(
+                    "ROOM-007",
+                    "Room outer boundary must be counter-clockwise in domain coordinates.");
+                return;
+
+            case PolygonOrientation.Degenerate:
+                result.Error(
+                    "ROOM-008",
+                    "Room outer boundary has zero or near-zero signed area and is degenerate.");
+                return;
+
+            default:
+                throw new InvalidOperationException(
+                    $"Unsupported polygon orientation: {orientation}.");
         }
     }
 
