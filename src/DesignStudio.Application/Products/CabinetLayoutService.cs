@@ -82,18 +82,18 @@ public sealed class CabinetLayoutService
             var openingIndex = i + 1;
 
             var y =
-                panel
-                + openingHeight * openingIndex
-                + panel * i;
+     panel
+    + openingHeight * openingIndex
+    + panel * i;
 
-            shelves.Add(
-                new CabinetShelfLayout(
-                    i + 1,
-                    Length.FromMillimeters(0),
-                    Length.FromMillimeters(y),
-                    Length.FromMillimeters(clearWidth),
-                    Length.FromMillimeters(depth),
-                    Length.FromMillimeters(panel)));
+           shelves.Add(
+    new CabinetShelfLayout(
+        i + 1,
+        Length.FromMillimeters(panel),
+        Length.FromMillimeters(y),
+        Length.FromMillimeters(clearWidth),
+        Length.FromMillimeters(depth),
+        Length.FromMillimeters(panel)));
         }
 
         return shelves;

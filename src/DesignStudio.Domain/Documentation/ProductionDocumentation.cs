@@ -22,6 +22,33 @@ public sealed record ShopDrawingView(
     IReadOnlyList<DimensionNote> Dimensions,
     IReadOnlyList<string> Notes);
 
+public sealed record ShopDrawingElement(
+    ShopDrawingElementType ElementType,
+    int Index,
+    string Name,
+    Length X,
+    Length Y,
+    Length Width,
+    Length Height,
+    Length Thickness);
+
+public enum ShopDrawingElementType
+{
+    LeftSide,
+    RightSide,
+    Top,
+    Bottom,
+    Shelf,
+    Door
+}
+
+public sealed record CabinetFrontElevationLayout(
+    Length OverallWidth,
+    Length OverallHeight,
+    Length ClearWidth,
+    Length ClearHeight,
+    IReadOnlyList<ShopDrawingElement> Elements);
+
 public sealed record PartDrawingView(
     CabinetPartType PartType,
     string PartName,
@@ -34,7 +61,8 @@ public sealed record PartDrawingView(
 
 public sealed record ShopDrawingSet(
     IReadOnlyList<ShopDrawingView> Views,
-    IReadOnlyList<PartDrawingView> PartViews);
+    IReadOnlyList<PartDrawingView> PartViews,
+    CabinetFrontElevationLayout? FrontElevationLayout = null);
 
 public sealed record CutDocumentLine(
     CabinetPartType PartType,

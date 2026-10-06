@@ -26,7 +26,16 @@ public sealed class CabinetProductionDrawingBuilder : IProductionDrawingBuilder
             .FirstOrDefault(x => x.ViewType == ShopDrawingViewType.TopPlan);
 
         if (front is not null)
-            AddView(primitives, front, 25, 65, 150, 100);
+        {
+            AddView(
+                primitives,
+                front,
+                25,
+                65,
+                150,
+                100,
+                documentSet.ShopDrawings.FrontElevationLayout);
+        }
 
         if (side is not null)
             AddView(primitives, side, 205, 65, 90, 100);
@@ -53,7 +62,8 @@ public sealed class CabinetProductionDrawingBuilder : IProductionDrawingBuilder
         double x,
         double y,
         double width,
-        double height)
+        double height,
+        CabinetFrontElevationLayout? frontLayout = null)
     {
         primitives.Add(Text(x, y - 7, view.Title, 3.5));
         primitives.Add(Rect(x, y, width, height));
@@ -70,7 +80,20 @@ public sealed class CabinetProductionDrawingBuilder : IProductionDrawingBuilder
         var right = ox + contentW;
         var bottom = oy + contentH;
 
-        primitives.Add(Rect(ox, oy, contentW, contentH));
+        if (view.ViewType == ShopDrawingViewType.FrontElevation &&
+            frontLayout is not null)
+        {
+            AddFrontElevationGeometry(
+                primitives,
+                frontLayout,
+                ox,
+                oy,
+                scale);
+        }
+        else
+        {
+            primitives.Add(Rect(ox, oy, contentW, contentH));
+        }
 
         var dimensionY = y + height + 10;
 
@@ -97,6 +120,91 @@ public sealed class CabinetProductionDrawingBuilder : IProductionDrawingBuilder
             primitives.Add(Text(x, noteY, note, 2.7));
             noteY += 5;
         }
+    }
+
+    private static void AddFrontElevationGeometry(
+        List<DrawingPrimitive> primitives,
+        CabinetFrontElevationLayout layout,
+        double originX,
+        double originY,
+        double scale)
+    {
+        var overallWidth = layout.OverallWidth.Millimeters;
+        var overallHeight = layout.OverallHeight.Millimeters;
+
+        if (overallWidth <= 0 || overallHeight <= 0)
+            return;
+
+        foreach (var element in layout.Elements)
+        {
+            var elementX = element.X.Millimeters;
+            var elementY = element.Y.Millimeters;
+            var elementWidth = element.Width.Millimeters;
+            var elementHeight = element.Height.Millimeters;
+
+            if (elementWidth <= 0 || elementHeight <= 0)
+                continue;
+
+            var pageX = originX + elementX * scale;
+
+            /*
+             * Domain layout coordinates are measured
+             * from the cabinet bottom.
+             *
+             * Drawing coordinates are measured
+             * from the page/view top.
+             *
+             * Therefore the Y coordinate must be inverted.
+             */
+            var pageY =
+                originY +
+                (overallHeight - elementY - elementHeight) * scale;
+
+            var pageWidth = elementWidth * scale;
+            var pageHeight = elementHeight * scale;
+
+            primitives.Add(
+                Rect(
+                    pageX,
+                    pageY,
+                    pageWidth,
+                    pageHeight));
+
+            AddElementLabel(
+                primitives,
+                element,
+                pageX,
+                pageY,
+                pageWidth,
+                pageHeight);
+        }
+    }
+
+    private static void AddElementLabel(
+        List<DrawingPrimitive> primitives,
+        ShopDrawingElement element,
+        double x,
+        double y,
+        double width,
+        double height)
+    {
+        if (element.ElementType == ShopDrawingElementType.LeftSide ||
+            element.ElementType == ShopDrawingElementType.RightSide ||
+            element.ElementType == ShopDrawingElementType.Top ||
+            element.ElementType == ShopDrawingElementType.Bottom)
+        {
+            return;
+        }
+
+        var labelX = x + width / 2;
+        var labelY = y + height / 2;
+
+        primitives.Add(
+            Text(
+                labelX,
+                labelY,
+                element.Name,
+                2.2));
     }
 
     private static void AddTitleBlock(

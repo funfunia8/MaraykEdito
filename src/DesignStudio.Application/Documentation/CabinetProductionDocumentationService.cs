@@ -38,6 +38,8 @@ public sealed class CabinetProductionDocumentationService
 
     private static ShopDrawingSet BuildShopDrawings(Cabinet cabinet, IReadOnlyList<CabinetPart> parts)
     {
+        var layout = new CabinetLayoutService().Build(cabinet);
+
         var frontNotes = new List<string>
         {
             "Show overall cabinet width and height.",
@@ -69,7 +71,9 @@ public sealed class CabinetProductionDocumentationService
                 new[]
                 {
                     new DimensionNote("Overall Width", cabinet.Width),
-                    new DimensionNote("Overall Height", cabinet.Height)
+                    new DimensionNote("Overall Height", cabinet.Height),
+                    new DimensionNote("Clear Width", layout.ClearWidth),
+                    new DimensionNote("Clear Height", layout.ClearHeight)
                 },
                 frontNotes),
             new ShopDrawingView(
@@ -100,6 +104,87 @@ public sealed class CabinetProductionDocumentationService
                 topNotes)
         };
 
+        var frontElements = new List<ShopDrawingElement>
+        {
+            new ShopDrawingElement(
+                ShopDrawingElementType.LeftSide,
+                1,
+                "Left Side",
+                Length.FromMillimeters(0),
+                Length.FromMillimeters(0),
+                cabinet.PanelThickness,
+                cabinet.Height,
+                cabinet.PanelThickness),
+
+            new ShopDrawingElement(
+                ShopDrawingElementType.RightSide,
+                1,
+                "Right Side",
+                Length.FromMillimeters(
+                    cabinet.Width.Millimeters -
+                    cabinet.PanelThickness.Millimeters),
+                Length.FromMillimeters(0),
+                cabinet.PanelThickness,
+                cabinet.Height,
+                cabinet.PanelThickness),
+
+            new ShopDrawingElement(
+                ShopDrawingElementType.Bottom,
+                1,
+                "Bottom",
+                Length.FromMillimeters(cabinet.PanelThickness.Millimeters),
+                Length.FromMillimeters(0),
+                layout.ClearWidth,
+                cabinet.PanelThickness,
+                cabinet.PanelThickness),
+
+            new ShopDrawingElement(
+                ShopDrawingElementType.Top,
+                1,
+                "Top",
+                Length.FromMillimeters(cabinet.PanelThickness.Millimeters),
+                Length.FromMillimeters(
+                    cabinet.Height.Millimeters -
+                    cabinet.PanelThickness.Millimeters),
+                layout.ClearWidth,
+                cabinet.PanelThickness,
+                cabinet.PanelThickness)
+        };
+foreach (var shelf in layout.Shelves)
+{
+    frontElements.Add(
+        new ShopDrawingElement(
+            ShopDrawingElementType.Shelf,
+            shelf.Index,
+            $"Shelf {shelf.Index}",
+            shelf.X,
+            shelf.Y,
+            shelf.Width,
+            shelf.Thickness,
+            shelf.Thickness));
+}
+
+        foreach (var door in layout.Doors)
+        {
+            frontElements.Add(
+                new ShopDrawingElement(
+                    ShopDrawingElementType.Door,
+                    door.Index,
+                    $"Door {door.Index}",
+                    door.X,
+                    door.Y,
+                    door.Width,
+                    door.Height,
+                    door.Thickness));
+        }
+
+        var frontLayout = new CabinetFrontElevationLayout(
+            cabinet.Width,
+            cabinet.Height,
+            layout.ClearWidth,
+            layout.ClearHeight,
+            frontElements);
+
         var partViews = parts
             .OrderBy(x => x.Type)
             .ThenBy(x => x.Name)
@@ -114,7 +199,10 @@ public sealed class CabinetProductionDocumentationService
                 x.GrainAlongWidth))
             .ToList();
 
-        return new ShopDrawingSet(views, partViews);
+        return new ShopDrawingSet(
+            views,
+            partViews,
+            frontLayout);
     }
 
     private static CutDocument BuildCutDocument(Project project, CabinetCutList cutList, NestingResult? nesting)
