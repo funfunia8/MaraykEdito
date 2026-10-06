@@ -97,7 +97,7 @@ public sealed class WorkspaceController
         var placementValidation = _cabinetPlacement.Validate(project, room);
         if (!placementValidation.IsValid)
         {
-            _history.Undo();
+            _history.RollbackLastExecution();
             throw new InvalidOperationException(string.Join(Environment.NewLine, placementValidation.Issues.Select(x => x.Message)));
         }
         State.SetDerived(_regeneration.Regenerate(project, room));
@@ -131,7 +131,7 @@ public sealed class WorkspaceController
         var validation = _rooms.Validate(project, room);
         if (!validation.IsValid)
         {
-            _history.Undo();
+            _history.RollbackLastExecution();
             throw new InvalidOperationException(string.Join(Environment.NewLine, validation.Issues.Select(x => x.Message)));
         }
         State.SetDerived(_regeneration.Regenerate(project, room));
@@ -148,7 +148,7 @@ public sealed class WorkspaceController
         var validation = _rooms.Validate(project, room);
         if (!validation.IsValid)
         {
-            _history.Undo();
+            _history.RollbackLastExecution();
             throw new InvalidOperationException(string.Join(Environment.NewLine, validation.Issues.Select(x => x.Message)));
         }
         State.SetDerived(_regeneration.Regenerate(project, room));
@@ -205,7 +205,7 @@ public sealed class WorkspaceController
         var validation = _rooms.Validate(project, room);
         if (!validation.IsValid)
         {
-            _history.Undo();
+            _history.RollbackLastExecution();
             throw new InvalidOperationException(string.Join(Environment.NewLine, validation.Issues.Select(x => x.Message)));
         }
 
@@ -245,7 +245,7 @@ public sealed class WorkspaceController
         var validation = _rooms.Validate(project, room);
         if (!validation.IsValid)
         {
-            _history.Undo();
+            _history.RollbackLastExecution();
             throw new InvalidOperationException(string.Join(Environment.NewLine, validation.Issues.Select(x => x.Message)));
         }
 
