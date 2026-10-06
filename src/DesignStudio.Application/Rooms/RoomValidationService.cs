@@ -1,3 +1,4 @@
+using DesignStudio.Domain.Geometry;
 using DesignStudio.Domain.Project;
 using DesignStudio.Domain.Validation;
 
@@ -48,6 +49,7 @@ public sealed class RoomValidationService
         }
 
         ValidateRoomTopology(result, room, walls);
+        ValidateRoomBoundaryGeometry(result, room, walls);
 
         foreach (var door in project.Objects.OfType<Door>())
         {
@@ -137,6 +139,61 @@ public sealed class RoomValidationService
         }
     }
 
+    private static void ValidateRoomBoundaryGeometry(
+        ValidationResult result,
+        Room room,
+        IReadOnlyList<Wall> walls)
+    {
+        if (walls.Count != room.WallIds.Count)
+            return;
+
+        if (walls.Count < 3)
+            return;
+
+        var tolerance = RoomConstraints.GeometryToleranceMm;
+
+        for (var firstIndex = 0; firstIndex < walls.Count; firstIndex++)
+        {
+            for (var secondIndex = firstIndex + 1;
+                 secondIndex < walls.Count;
+                 secondIndex++)
+            {
+                var first = walls[firstIndex];
+                var second = walls[secondIndex];
+
+                var relation = SegmentGeometry.Classify(
+                    first.Start,
+                    first.End,
+                    second.Start,
+                    second.End,
+                    tolerance);
+
+                var adjacent =
+                    secondIndex == firstIndex + 1 ||
+                    (firstIndex == 0 && secondIndex == walls.Count - 1);
+
+                if (adjacent)
+                {
+                    if (relation != SegmentRelation.Touch)
+                    {
+                        result.Error(
+                            "ROOM-006",
+                            $"Adjacent room boundary walls {first.Id} and {second.Id} have an invalid geometric relationship: {relation}.");
+                    }
+
+                    continue;
+                }
+
+                if (relation != SegmentRelation.None)
+                {
+                    result.Error(
+                        "ROOM-006",
+                        $"Room boundary walls {first.Id} and {second.Id} intersect or overlap: {relation}.");
+                }
+            }
+        }
+    }
+
     private static void ValidateOpeningBounds(
         ValidationResult result,
         Wall wall,
@@ -186,22 +243,26 @@ public sealed class RoomValidationService
     {
         var openings = project.Objects
             .Where(x => x is Door or Window)
-            .Select(x => (Object: x, Host: x switch
-            {
-                Door door => door.HostWallId,
-                Window window => window.HostWallId,
-                _ => default
-            }, Offset: x switch
-            {
-                Door door => door.OffsetFromWallStart.Millimeters,
-                Window window => window.OffsetFromWallStart.Millimeters,
-                _ => 0
-            }, Width: x switch
-            {
-                Door door => door.Width.Millimeters,
-                Window window => window.Width.Millimeters,
-                _ => 0
-            }))
+            .Select(x => (
+                Object: x,
+                Host: x switch
+                {
+                    Door door => door.HostWallId,
+                    Window window => window.HostWallId,
+                    _ => default
+                },
+                Offset: x switch
+                {
+                    Door door => door.OffsetFromWallStart.Millimeters,
+                    Window window => window.OffsetFromWallStart.Millimeters,
+                    _ => 0
+                },
+                Width: x switch
+                {
+                    Door door => door.Width.Millimeters,
+                    Window window => window.Width.Millimeters,
+                    _ => 0
+                }))
             .Where(x => room.WallIds.Contains(x.Host))
             .GroupBy(x => x.Host);
 

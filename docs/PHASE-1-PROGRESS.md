@@ -66,15 +66,41 @@ Current regression status:
 
 The current topology implementation intentionally validates connectivity and closure only. Advanced geometric validity such as self-intersection, non-manifold wall joins, and more complex boundary semantics is not yet considered complete and must be handled by a later dedicated geometry-integrity gate.
 
+
+## Advanced Room Geometry Integrity gate
+
+The initial Advanced Room Geometry Integrity gate is now implemented and covered by regression tests.
+
+Completed capabilities include:
+
+- reusable 2D segment relationship classification
+- distinction between no relation, endpoint touch, proper intersection, and collinear overlap
+- tolerance-aware segment classification
+- detection of self-intersecting room boundaries
+- detection of non-adjacent boundary contact
+- detection of invalid collinear overlap/backtracking
+- diagnostic validation errors identifying the conflicting wall IDs
+- integration of geometry integrity validation into room validation
+- rejection of invalid wall edits through the workspace controller
+- full restoration of all affected wall geometry after rejected edits
+- preservation of clean undo/redo state after rejected edits
+
+Current regression status:
+
+`142/142 tests passing`
+
+The current implementation still treats `Room.WallIds` as one ordered boundary loop. Internal partitions, multi-loop rooms, holes, and more advanced wall-junction semantics are intentionally outside this gate and require an explicit room-boundary model before implementation.
+
 ## Next gate
 
-The next implementation gate is **Advanced Room Geometry Integrity**:
+The next implementation gate is **Room Boundary Semantics and Complex Spaces**:
 
-- detect non-adjacent wall intersections
-- detect invalid/self-intersecting room boundaries
-- define valid wall-junction semantics
-- distinguish room boundary walls from internal partitions
-- establish robust geometric tolerances and normalization rules
-- ensure editing and regeneration remain deterministic for non-rectangular rooms
+- define explicit boundary-wall semantics
+- define internal partition semantics
+- support non-rectangular rooms as a first-class model
+- establish polygon orientation and signed-area rules
+- define multi-loop and opening/hole semantics
+- define valid wall-junction types
+- ensure editing and regeneration remain deterministic for complex room boundaries
 
-No visual polish is considered complete until the underlying room geometry remains valid under these cases.
+No visual polish is considered complete until these underlying spatial semantics are explicit and stable.

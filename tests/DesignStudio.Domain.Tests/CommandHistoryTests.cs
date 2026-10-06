@@ -150,4 +150,52 @@ public sealed class CommandHistoryTests
         Assert.Equal(newEnd.Y, second.Start.Y, 3);
     }
 
+    [Fact]
+    public void ResizeActiveWallRejectsSelfIntersectionAndRestoresAllGeometry()
+    {
+        var state = new WorkspaceState();
+        var workspace = new WorkspaceController(state);
+
+        workspace.CreateProject("Test");
+        workspace.CreateDefaultRoom();
+
+        var project = state.ActiveProject!;
+        var room = state.ActiveRoom!;
+
+        var walls = room.WallIds
+            .Select(project.Get<Wall>)
+            .ToList();
+
+        var originalGeometry = walls
+            .Select(wall => (wall.Id, wall.Start, wall.End))
+            .ToDictionary(
+                x => x.Id,
+                x => (x.Start, x.End));
+
+        Assert.Throws<InvalidOperationException>(
+            () => workspace.ResizeActiveWall(
+                0,
+                new Point2D(1000, 5000)));
+
+        foreach (var wall in walls)
+        {
+            var original = originalGeometry[wall.Id];
+
+            Assert.Equal(original.Start.X, wall.Start.X, 3);
+            Assert.Equal(original.Start.Y, wall.Start.Y, 3);
+            Assert.Equal(original.End.X, wall.End.X, 3);
+            Assert.Equal(original.End.Y, wall.End.Y, 3);
+        }
+
+        Assert.False(workspace.CanUndo);
+        Assert.False(workspace.CanRedo);
+
+        var validation = new RoomValidationService()
+            .Validate(project, room);
+
+        Assert.True(validation.IsValid);
+        Assert.DoesNotContain(
+            validation.Issues,
+            issue => issue.Code == "ROOM-006");
+    }
 }
