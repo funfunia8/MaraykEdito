@@ -7,6 +7,8 @@ public sealed class CabinetProductionDrawingBuilder : IProductionDrawingBuilder
     private const double PageWidthMm = 420;
     private const double PageHeightMm = 297;
 
+    private readonly ProductionDimensionEngine _dimensionEngine = new();
+
     public ProductionDrawingPage Build(ProductionDocumentSet documentSet)
     {
         ArgumentNullException.ThrowIfNull(documentSet);
@@ -16,15 +18,19 @@ public sealed class CabinetProductionDrawingBuilder : IProductionDrawingBuilder
 
         var front = documentSet.ShopDrawings.Views
             .FirstOrDefault(x => x.ViewType == ShopDrawingViewType.FrontElevation);
+
         var side = documentSet.ShopDrawings.Views
             .FirstOrDefault(x => x.ViewType == ShopDrawingViewType.SideElevation);
+
         var top = documentSet.ShopDrawings.Views
             .FirstOrDefault(x => x.ViewType == ShopDrawingViewType.TopPlan);
 
         if (front is not null)
             AddView(primitives, front, 25, 65, 150, 100);
+
         if (side is not null)
             AddView(primitives, side, 205, 65, 90, 100);
+
         if (top is not null)
             AddView(primitives, top, 315, 65, 80, 70);
 
@@ -41,17 +47,7 @@ public sealed class CabinetProductionDrawingBuilder : IProductionDrawingBuilder
             primitives);
     }
 
-    private static void AddTitleBlock(
-        List<DrawingPrimitive> primitives,
-        ProductionDocumentSet documentSet)
-    {
-        primitives.Add(Text(15, 15, documentSet.DocumentCode, 5));
-        primitives.Add(Text(15, 23, "CABINET PRODUCTION SHEET", 4));
-        primitives.Add(Text(350, 15, $"REV {documentSet.Revision}", 4));
-        primitives.Add(Line(15, 28, 405, 28));
-    }
-
-    private static void AddView(
+    private void AddView(
         List<DrawingPrimitive> primitives,
         ShopDrawingView view,
         double x,
@@ -71,19 +67,46 @@ public sealed class CabinetProductionDrawingBuilder : IProductionDrawingBuilder
         var ox = x + (width - contentW) / 2;
         var oy = y + (height - contentH) / 2;
 
-        primitives.Add(Rect(ox, oy, contentW, contentH));
-        primitives.Add(Text(
-            x,
-            y + height + 6,
-            $"W {view.Width.Millimeters:0.##} x H {view.Height.Millimeters:0.##} mm",
-            3));
+        var right = ox + contentW;
+        var bottom = oy + contentH;
 
-        var noteIndex = 0;
+        primitives.Add(Rect(ox, oy, contentW, contentH));
+
+        var dimensionY = y + height + 10;
+
+        _dimensionEngine.AddHorizontalDimension(
+            primitives,
+            ox,
+            right,
+            bottom,
+            dimensionY,
+            $"{view.Width.Millimeters:0.##} mm");
+
+        _dimensionEngine.AddVerticalDimension(
+            primitives,
+            ox,
+            oy,
+            bottom,
+            Math.Max(8, x - 12),
+            $"{view.Height.Millimeters:0.##} mm");
+
+        var noteY = dimensionY + 9;
+
         foreach (var note in view.Notes.Take(2))
         {
-            primitives.Add(Text(x, y + height + 12 + noteIndex * 5, note, 2.7));
-            noteIndex++;
+            primitives.Add(Text(x, noteY, note, 2.7));
+            noteY += 5;
         }
+    }
+
+    private static void AddTitleBlock(
+        List<DrawingPrimitive> primitives,
+        ProductionDocumentSet documentSet)
+    {
+        primitives.Add(Text(15, 15, documentSet.DocumentCode, 5));
+        primitives.Add(Text(15, 23, "CABINET PRODUCTION SHEET", 4));
+        primitives.Add(Text(350, 15, $"REV {documentSet.Revision}", 4));
+        primitives.Add(Line(15, 28, 405, 28));
     }
 
     private static void AddCutSummary(
@@ -98,12 +121,16 @@ public sealed class CabinetProductionDrawingBuilder : IProductionDrawingBuilder
 
         foreach (var line in documentSet.CutDocument.Lines.Take(8))
         {
-            var material = string.IsNullOrWhiteSpace(line.MaterialCode) ? "UNASSIGNED" : line.MaterialCode;
+            var material = string.IsNullOrWhiteSpace(line.MaterialCode)
+                ? "UNASSIGNED"
+                : line.MaterialCode;
+
             primitives.Add(Text(
                 x,
                 lineY,
                 $"{line.Quantity}x {line.PartName}  {line.Width.Millimeters:0.#}x{line.Height.Millimeters:0.#}  {material}",
                 2.7));
+
             lineY += 5;
         }
     }
@@ -119,11 +146,15 @@ public sealed class CabinetProductionDrawingBuilder : IProductionDrawingBuilder
 
         foreach (var step in documentSet.AssemblyDocument.Steps.Take(8))
         {
-            primitives.Add(Text(x, lineY, $"{step.Sequence}: {step.Title}", 2.7));
+            primitives.Add(Text(
+                x,
+                lineY,
+                $"{step.Sequence}: {step.Title}",
+                2.7));
+
             lineY += 5;
         }
     }
-
 
     private static void AddHardwareSummary(
         List<DrawingPrimitive> primitives,
@@ -133,17 +164,37 @@ public sealed class CabinetProductionDrawingBuilder : IProductionDrawingBuilder
     {
         primitives.Add(Text(x, y, "HARDWARE", 4));
         var lineY = y + 8;
+
         foreach (var line in documentSet.AssemblyDocument.HardwareLines.Take(6))
         {
-            primitives.Add(Text(x, lineY, $"{line.Quantity}x {line.Code}  {line.Name}", 2.7));
+            primitives.Add(Text(
+                x,
+                lineY,
+                $"{line.Quantity}x {line.Code}  {line.Name}",
+                2.7));
+
             lineY += 5;
         }
     }
 
-    private static DrawingPrimitive Line(double x1, double y1, double x2, double y2) =>
-        new(DrawingPrimitiveType.Line, new(x1, y1), new(x2, y2), string.Empty, 0.4, 0);
+    private static DrawingPrimitive Line(
+        double x1,
+        double y1,
+        double x2,
+        double y2) =>
+        new(
+            DrawingPrimitiveType.Line,
+            new(x1, y1),
+            new(x2, y2),
+            string.Empty,
+            0.4,
+            0);
 
-    private static DrawingPrimitive Rect(double x, double y, double width, double height) =>
+    private static DrawingPrimitive Rect(
+        double x,
+        double y,
+        double width,
+        double height) =>
         new(
             DrawingPrimitiveType.Rectangle,
             new(x, y),
@@ -152,7 +203,11 @@ public sealed class CabinetProductionDrawingBuilder : IProductionDrawingBuilder
             0.4,
             0);
 
-    private static DrawingPrimitive Text(double x, double y, string text, double fontSize) =>
+    private static DrawingPrimitive Text(
+        double x,
+        double y,
+        string text,
+        double fontSize) =>
         new(
             DrawingPrimitiveType.Text,
             new(x, y),
