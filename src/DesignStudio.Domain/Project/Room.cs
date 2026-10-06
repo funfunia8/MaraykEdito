@@ -29,7 +29,8 @@ public sealed class Room : ProjectObject
     public RoomBoundary Boundary => _boundary;
 
     // Compatibility projection for the existing project/storage API.
-    public IReadOnlyList<EntityId> WallIds => _boundary.OuterLoop.WallIds;
+    public IReadOnlyList<EntityId> WallIds =>
+        _boundary.OuterLoop.WallIds;
 
     public void SetHeight(Length height)
     {
@@ -42,5 +43,10 @@ public sealed class Room : ProjectObject
     public void AddWall(EntityId wallId)
     {
         _boundary.OuterLoop.AddWall(wallId);
+    }
+
+    public void AddBoundaryEdge(BoundaryEdge edge)
+    {
+        _boundary.AddOuterEdge(edge);
     }
 }

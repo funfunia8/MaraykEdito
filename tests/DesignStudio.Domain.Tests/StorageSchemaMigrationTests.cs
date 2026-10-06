@@ -88,7 +88,7 @@ public class StorageSchemaMigrationTests
     {
         const string json = """
         {
-          "schemaVersion": 3,
+          "schemaVersion": 4,
           "projectId": "11111111-1111-1111-1111-111111111111",
           "name": "Future Project",
           "objects": []

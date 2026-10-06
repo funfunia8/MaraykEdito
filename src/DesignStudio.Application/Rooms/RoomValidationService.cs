@@ -52,7 +52,7 @@ public sealed class RoomValidationService
         var geometryValid = ValidateRoomBoundaryGeometry(result, room, walls);
 
         if (topologyValid && geometryValid)
-            ValidateRoomBoundaryOrientation(result, walls);
+            ValidateRoomBoundaryOrientation(result, room, walls);
 
         foreach (var door in project.Objects.OfType<Door>())
         {
@@ -119,12 +119,20 @@ public sealed class RoomValidationService
         var tolerance = RoomConstraints.GeometryToleranceMm;
         var valid = true;
 
+        var edges = room.Boundary.OuterLoop.Edges;
+
+        if (edges.Count != walls.Count)
+            return false;
+
         for (var index = 0; index < walls.Count - 1; index++)
         {
             var current = walls[index];
             var next = walls[index + 1];
 
-            if (current.End.DistanceTo(next.Start) > tolerance)
+            var currentEnd = GetDirectedEnd(edges[index], current);
+            var nextStart = GetDirectedStart(edges[index + 1], next);
+
+            if (currentEnd.DistanceTo(nextStart) > tolerance)
             {
                 result.Error(
                     "ROOM-004",
@@ -137,7 +145,10 @@ public sealed class RoomValidationService
         var first = walls[0];
         var last = walls[^1];
 
-        if (last.End.DistanceTo(first.Start) > tolerance)
+        var lastEnd = GetDirectedEnd(edges[^1], last);
+        var firstStart = GetDirectedStart(edges[0], first);
+
+        if (lastEnd.DistanceTo(firstStart) > tolerance)
         {
             result.Error(
                 "ROOM-005",
@@ -171,12 +182,14 @@ public sealed class RoomValidationService
             {
                 var first = walls[firstIndex];
                 var second = walls[secondIndex];
+                var firstEdge = room.Boundary.OuterLoop.Edges[firstIndex];
+                var secondEdge = room.Boundary.OuterLoop.Edges[secondIndex];
 
                 var relation = SegmentGeometry.Classify(
-                    first.Start,
-                    first.End,
-                    second.Start,
-                    second.End,
+                    GetDirectedStart(firstEdge, first),
+                    GetDirectedEnd(firstEdge, first),
+                    GetDirectedStart(secondEdge, second),
+                    GetDirectedEnd(secondEdge, second),
                     tolerance);
 
                 var adjacent =
@@ -213,10 +226,24 @@ public sealed class RoomValidationService
 
     private static void ValidateRoomBoundaryOrientation(
         ValidationResult result,
+        Room room,
         IReadOnlyList<Wall> walls)
     {
+        var edges = room.Boundary.OuterLoop.Edges;
+
+        if (edges.Count != walls.Count)
+        {
+            result.Error(
+                "ROOM-008",
+                "Room outer boundary does not have a matching directed edge for every wall.");
+
+            return;
+        }
+
         var points = walls
-            .Select(wall => wall.Start)
+            .Select(
+                (wall, index) =>
+                    GetDirectedStart(edges[index], wall))
             .ToArray();
 
         var orientation = PolygonGeometry.GetOrientation(
@@ -244,6 +271,24 @@ public sealed class RoomValidationService
                 throw new InvalidOperationException(
                     $"Unsupported polygon orientation: {orientation}.");
         }
+    }
+
+    private static Point2D GetDirectedStart(
+        BoundaryEdge edge,
+        Wall wall)
+    {
+        return edge.IsReversed
+            ? wall.End
+            : wall.Start;
+    }
+
+    private static Point2D GetDirectedEnd(
+        BoundaryEdge edge,
+        Wall wall)
+    {
+        return edge.IsReversed
+            ? wall.Start
+            : wall.End;
     }
 
     private static void ValidateOpeningBounds(

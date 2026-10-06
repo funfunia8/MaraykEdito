@@ -39,16 +39,22 @@ public sealed class JsonProjectSerializer : IProjectSerializer
         return schemaVersion switch
         {
             1 => FromDocument(
-                MigrateV1(
-                    json.RootElement.Deserialize<ProjectDocumentV1>(_options)
-                    ?? throw new InvalidDataException("Project document is invalid."))),
+                MigrateV2ToV3(
+                    MigrateV1(
+                        json.RootElement.Deserialize<ProjectDocumentV1>(_options)
+                        ?? throw new InvalidDataException("Project document is invalid.")))),
 
             2 => FromDocument(
-                json.RootElement.Deserialize<ProjectDocumentV2>(_options)
+                MigrateV2ToV3(
+                    json.RootElement.Deserialize<ProjectDocumentV2>(_options)
+                    ?? throw new InvalidDataException("Project document is invalid."))),
+
+            3 => FromDocument(
+                json.RootElement.Deserialize<ProjectDocumentV3>(_options)
                 ?? throw new InvalidDataException("Project document is invalid.")),
 
             _ => throw new NotSupportedException(
-                $"Unsupported project schema version: {schemaVersion}. Supported schema versions: 1 and 2.")
+                $"Unsupported project schema version: {schemaVersion}. Supported schema versions: 1, 2, and 3.")
         };
     }
 
@@ -72,17 +78,73 @@ public sealed class JsonProjectSerializer : IProjectSerializer
         };
     }
 
-    private ProjectDocumentV2 ToDocument(Project project)
+    private static ProjectDocumentV3 MigrateV2ToV3(ProjectDocumentV2 v2)
     {
-        var doc = new ProjectDocumentV2
+        return new ProjectDocumentV3
         {
+            SchemaVersion = 3,
+            ProjectId = v2.ProjectId,
+            Name = v2.Name,
+            ProductDefinitions = v2.ProductDefinitions
+                .Select(definition => new ProductDefinitionRecordV3
+                {
+                    Id = definition.Id,
+                    Code = definition.Code,
+                    Name = definition.Name,
+                    Category = definition.Category,
+                    Manufacturer = definition.Manufacturer,
+                    Model = definition.Model
+                })
+                .ToList(),
+            Objects = v2.Objects
+                .Select(record =>
+                {
+                    var data = record.Data;
+
+                    if (record.Type == "Room")
+                    {
+                        var roomData =
+                            record.Data.Deserialize<RoomData>(_SerializerOptions())
+                            ?? throw new InvalidDataException("Invalid room data.");
+
+                        data = JsonSerializer.SerializeToElement(
+                            new RoomDataV3(
+                                roomData.Name,
+                                roomData.HeightMm,
+                                roomData.WallIds
+                                    .Select(wallId =>
+                                        new BoundaryEdgeData(
+                                            wallId,
+                                            false))
+                                    .ToList(),
+                                roomData.FloorId),
+                            _SerializerOptions());
+                    }
+
+                    return new ProjectObjectRecordV3
+                    {
+                        Id = record.Id,
+                        Type = record.Type,
+                        Data = data,
+                        Metadata = record.Metadata
+                    };
+                })
+                .ToList()
+        };
+    }
+
+    private ProjectDocumentV3 ToDocument(Project project)
+    {
+        var doc = new ProjectDocumentV3
+        {
+            SchemaVersion = 3,
             ProjectId = project.Id.Value.ToString("D"),
             Name = project.Name
         };
 
         foreach (var definition in project.ProductDefinitions)
         {
-            doc.ProductDefinitions.Add(new ProductDefinitionRecordV2
+            doc.ProductDefinitions.Add(new ProductDefinitionRecordV3
             {
                 Id = definition.Id.Value.ToString("D"),
                 Code = definition.Code,
@@ -111,7 +173,7 @@ public sealed class JsonProjectSerializer : IProjectSerializer
                 material.Finish,
                 material.Unit);
 
-            doc.Objects.Add(new ProjectObjectRecordV2
+            doc.Objects.Add(new ProjectObjectRecordV3
             {
                 Id = material.Id.Value.ToString("D"),
                 Type = material.Type,
@@ -126,7 +188,15 @@ public sealed class JsonProjectSerializer : IProjectSerializer
             {
                 Building b => new BuildingData(b.Name),
                 Floor f => new FloorData(f.Name, ToNullableId(f.BuildingId)),
-                Room r => new RoomData(r.Name, r.Height.Millimeters, r.WallIds.Select(x => x.Value.ToString("D")).ToList(), ToNullableId(r.FloorId)),
+                Room r => new RoomDataV3(
+                    r.Name,
+                    r.Height.Millimeters,
+                    r.Boundary.OuterLoop.Edges
+                        .Select(edge => new BoundaryEdgeData(
+                            edge.WallId.Value.ToString("D"),
+                            edge.IsReversed))
+                        .ToList(),
+                    ToNullableId(r.FloorId)),
                 Wall w => new WallData(w.Start.X, w.Start.Y, w.End.X, w.End.Y, w.Thickness.Millimeters, w.Height.Millimeters),
                 Door d => new DoorData(d.HostWallId.Value.ToString("D"), d.OffsetFromWallStart.Millimeters, d.Width.Millimeters, d.Height.Millimeters),
                 Window w => new WindowData(w.HostWallId.Value.ToString("D"), w.OffsetFromWallStart.Millimeters, w.Width.Millimeters, w.Height.Millimeters, w.SillHeight.Millimeters),
@@ -143,7 +213,7 @@ public sealed class JsonProjectSerializer : IProjectSerializer
                 _ => throw new NotSupportedException($"Unsupported project object: {obj.GetType().Name}")
             };
 
-            doc.Objects.Add(new ProjectObjectRecordV2
+            doc.Objects.Add(new ProjectObjectRecordV3
             {
                 Id = obj.Id.Value.ToString("D"),
                 Type = obj.Type,
@@ -155,7 +225,7 @@ public sealed class JsonProjectSerializer : IProjectSerializer
         return doc;
     }
 
-    private static Project FromDocument(ProjectDocumentV2 doc)
+    private static Project FromDocument(ProjectDocumentV3 doc)
     {
         if (!Guid.TryParse(doc.ProjectId, out var projectGuid))
             throw new InvalidDataException("Invalid project id.");
@@ -204,11 +274,32 @@ public sealed class JsonProjectSerializer : IProjectSerializer
                 }
                 case "Room":
                 {
-                    var data = record.Data.Deserialize<RoomData>(_SerializerOptions()) ?? throw new InvalidDataException("Invalid room data.");
-                    var room = new Room(data.Name, id, ParseNullableId(data.FloorId));
-                    room.SetHeight(Length.FromMillimeters(data.HeightMm));
-                    foreach (var wallId in data.WallIds)
-                        if (Guid.TryParse(wallId, out var g)) room.AddWall(new EntityId(g));
+                    var data =
+                        record.Data.Deserialize<RoomDataV3>(_SerializerOptions())
+                        ?? throw new InvalidDataException("Invalid room data.");
+
+                    var room = new Room(
+                        data.Name,
+                        id,
+                        ParseNullableId(data.FloorId));
+
+                    room.SetHeight(
+                        Length.FromMillimeters(data.HeightMm));
+
+                    foreach (var edge in data.BoundaryEdges)
+                    {
+                        if (!Guid.TryParse(edge.WallId, out var wallGuid))
+                        {
+                            throw new InvalidDataException(
+                                $"Invalid room boundary wall id: {edge.WallId}");
+                        }
+
+                        room.AddBoundaryEdge(
+                            new BoundaryEdge(
+                                new EntityId(wallGuid),
+                                edge.IsReversed));
+                    }
+
                     project.Add(room);
                     break;
                 }
@@ -345,7 +436,23 @@ public sealed class JsonProjectSerializer : IProjectSerializer
 
     private sealed record BuildingData(string Name);
     private sealed record FloorData(string Name, string? BuildingId = null);
-    private sealed record RoomData(string Name, double HeightMm, List<string> WallIds, string? FloorId = null);
+    // Legacy Schema 2 room data.
+    private sealed record RoomData(
+        string Name,
+        double HeightMm,
+        List<string> WallIds,
+        string? FloorId = null);
+
+    // Current Schema 3 room data.
+    private sealed record RoomDataV3(
+        string Name,
+        double HeightMm,
+        List<BoundaryEdgeData> BoundaryEdges,
+        string? FloorId = null);
+
+    private sealed record BoundaryEdgeData(
+        string WallId,
+        bool IsReversed);
     private sealed record WallData(double StartX, double StartY, double EndX, double EndY, double ThicknessMm, double HeightMm);
     private sealed record DoorData(string HostWallId, double OffsetMm, double WidthMm, double HeightMm);
     private sealed record WindowData(string HostWallId, double OffsetMm, double WidthMm, double HeightMm, double SillMm);

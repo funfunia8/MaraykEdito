@@ -102,7 +102,7 @@ Completed capabilities include:
 - explicit `OuterLoop` on each room boundary
 - preservation of wall ordering within the outer boundary loop
 - `Room.WallIds` retained as a compatibility projection of `Boundary.OuterLoop.WallIds`
-- existing storage format preserved without a schema migration
+- legacy V1/V2 project data remains loadable through explicit schema migrations
 - existing room consumers continue to operate through the compatibility projection
 - domain signed-area calculation
 - explicit polygon orientation classification
@@ -110,10 +110,17 @@ Completed capabilities include:
 - degenerate and near-zero-area boundary rejection
 - integration of orientation validation into room validation
 - regression coverage for clockwise, counter-clockwise, concave, and degenerate boundaries
+- directed boundary-edge semantics with explicit forward or reverse wall traversal
+- topology and orientation validation based on directed boundary edges
+- support for shared physical walls traversed in opposite directions by adjacent rooms
+- Schema 3 persistence for directed boundary edges
+- V2 to V3 migration with legacy wall references converted to forward boundary edges
+- V1 to V2 to V3 migration path preserved
+- Save/load regression coverage proving `IsReversed` survives persistence
 
 Current regression status:
 
-`159/159 tests passing`
+`168/168 tests passing`
 
 The current boundary model intentionally supports one explicit outer loop only. Internal partitions, multiple boundary loops, holes/openings as first-class loops, and advanced wall-junction semantics are not yet complete.
 
