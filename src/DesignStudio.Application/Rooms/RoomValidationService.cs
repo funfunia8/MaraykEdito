@@ -1,65 +1,73 @@
 using DesignStudio.Domain.Geometry;
+using DesignStudio.Domain.Identity;
 using DesignStudio.Domain.Project;
+using DesignStudio.Domain.Units;
 using DesignStudio.Domain.Validation;
 
 namespace DesignStudio.Application.Rooms;
 
 public sealed class RoomValidationService
 {
-    public ValidationResult Validate(Project project, Room room)
+    public ValidationResult Validate(
+        Project project,
+        Room room)
     {
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(room);
 
         var result = new ValidationResult();
+        var edges = room.Boundary.OuterLoop.Edges;
 
-        if (room.WallIds.Count < 3)
-            result.Error("ROOM-001", "A room must contain at least three walls.");
-
-        var walls = new List<Wall>();
-        var wallIds = new HashSet<DesignStudio.Domain.Identity.EntityId>();
-
-        foreach (var wallId in room.WallIds)
+        if (edges.Count < 3)
         {
-            if (!wallIds.Add(wallId))
-            {
-                result.Error(
-                    "ROOM-003",
-                    $"Room references wall {wallId} more than once.");
-                continue;
-            }
-
-            if (!project.TryGet(wallId, out var obj) || obj is not Wall)
-            {
-                result.Error(
-                    "ROOM-002",
-                    $"Room references missing wall {wallId}.");
-                continue;
-            }
-
-            var wall = (Wall)obj;
-            walls.Add(wall);
-
-            if (wall.LengthMm < RoomConstraints.MinimumWallLengthMm)
-            {
-                result.Error(
-                    "WALL-001",
-                    $"Wall {wall.Id} is shorter than the minimum allowed length of {RoomConstraints.MinimumWallLengthMm:0} mm.");
-            }
+            result.Error(
+                "ROOM-001",
+                "A room must contain at least three boundary edges.");
         }
 
-        var topologyValid = ValidateRoomTopology(result, room, walls);
-        var geometryValid = ValidateRoomBoundaryGeometry(result, room, walls);
+        var resolvedEdges =
+            ResolveBoundaryEdges(
+                project,
+                room,
+                result);
+
+        var boundaryIsResolved =
+            resolvedEdges.Count == edges.Count &&
+            resolvedEdges.Count >= 3;
+
+        var topologyValid =
+            boundaryIsResolved &&
+            ValidateRoomTopology(
+                result,
+                resolvedEdges);
+
+        var geometryValid =
+            boundaryIsResolved &&
+            ValidateRoomBoundaryGeometry(
+                result,
+                resolvedEdges);
 
         if (topologyValid && geometryValid)
-            ValidateRoomBoundaryOrientation(result, room, walls);
+        {
+            ValidateRoomBoundaryOrientation(
+                result,
+                resolvedEdges);
+        }
 
         foreach (var door in project.Objects.OfType<Door>())
         {
-            if (!room.WallIds.Contains(door.HostWallId))
+            if (!IsOpeningOnRoomBoundary(
+                    room,
+                    door.HostWallId,
+                    door.OffsetFromWallStart.Millimeters,
+                    door.Width.Millimeters))
+            {
                 continue;
+            }
 
-            if (!project.TryGet(door.HostWallId, out var obj) ||
+            if (!project.TryGet(
+                    door.HostWallId,
+                    out var obj) ||
                 obj is not Wall wall)
             {
                 continue;
@@ -79,10 +87,18 @@ public sealed class RoomValidationService
 
         foreach (var window in project.Objects.OfType<Window>())
         {
-            if (!room.WallIds.Contains(window.HostWallId))
+            if (!IsOpeningOnRoomBoundary(
+                    room,
+                    window.HostWallId,
+                    window.OffsetFromWallStart.Millimeters,
+                    window.Width.Millimeters))
+            {
                 continue;
+            }
 
-            if (!project.TryGet(window.HostWallId, out var obj) ||
+            if (!project.TryGet(
+                    window.HostWallId,
+                    out var obj) ||
                 obj is not Wall wall)
             {
                 continue;
@@ -100,59 +116,124 @@ public sealed class RoomValidationService
                 "OPENING-004");
         }
 
-        ValidateOpeningOverlaps(result, project, room);
+        ValidateOpeningOverlaps(
+            result,
+            project,
+            room);
 
         return result;
     }
 
-    private static bool ValidateRoomTopology(
-        ValidationResult result,
+    private static List<ResolvedBoundaryEdge> ResolveBoundaryEdges(
+        Project project,
         Room room,
-        IReadOnlyList<Wall> walls)
+        ValidationResult result)
     {
-        if (walls.Count != room.WallIds.Count)
-            return false;
-
-        if (walls.Count < 3)
-            return false;
-
-        var tolerance = RoomConstraints.GeometryToleranceMm;
-        var valid = true;
-
+        var resolved = new List<ResolvedBoundaryEdge>();
         var edges = room.Boundary.OuterLoop.Edges;
 
-        if (edges.Count != walls.Count)
-            return false;
-
-        for (var index = 0; index < walls.Count - 1; index++)
+        foreach (var edge in edges)
         {
-            var current = walls[index];
-            var next = walls[index + 1];
+            if (!project.TryGet(
+                    edge.WallId,
+                    out var obj) ||
+                obj is not Wall wall)
+            {
+                result.Error(
+                    "ROOM-002",
+                    $"Room references missing wall {edge.WallId}.");
 
-            var currentEnd = GetDirectedEnd(edges[index], current);
-            var nextStart = GetDirectedStart(edges[index + 1], next);
+                continue;
+            }
 
-            if (currentEnd.DistanceTo(nextStart) > tolerance)
+            if (!double.IsFinite(wall.LengthMm) ||
+                wall.LengthMm <= RoomConstraints.GeometryToleranceMm)
+            {
+                result.Error(
+                    "WALL-001",
+                    $"Wall {wall.Id} has an invalid or zero length.");
+
+                continue;
+            }
+
+            if (wall.LengthMm < RoomConstraints.MinimumWallLengthMm)
+            {
+                result.Error(
+                    "WALL-001",
+                    $"Wall {wall.Id} is shorter than the minimum allowed length of {RoomConstraints.MinimumWallLengthMm:0} mm.");
+            }
+
+            WallSegment segment;
+
+            try
+            {
+                segment = edge.ResolveSegment(wall);
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                result.Error(
+                    "ROOM-009",
+                    $"Boundary edge for wall {wall.Id} has an invalid span.");
+
+                continue;
+            }
+            catch (InvalidOperationException)
+            {
+                result.Error(
+                    "ROOM-009",
+                    $"Boundary edge for wall {wall.Id} has a span outside the physical wall.");
+
+                continue;
+            }
+
+            resolved.Add(
+                new ResolvedBoundaryEdge(
+                    edge,
+                    wall,
+                    segment));
+        }
+
+        return resolved;
+    }
+
+    private static bool ValidateRoomTopology(
+        ValidationResult result,
+        IReadOnlyList<ResolvedBoundaryEdge> edges)
+    {
+        var tolerance =
+            RoomConstraints.GeometryToleranceMm;
+
+        var valid = true;
+
+        for (var index = 0;
+             index < edges.Count - 1;
+             index++)
+        {
+            var current = edges[index];
+            var next = edges[index + 1];
+
+            if (current.Segment.End.DistanceTo(
+                    next.Segment.Start) > tolerance)
             {
                 result.Error(
                     "ROOM-004",
-                    $"Room boundary is disconnected between walls {current.Id} and {next.Id}.");
+                    $"Room boundary is disconnected between walls " +
+                    $"{current.Wall.Id} and {next.Wall.Id}.");
 
                 valid = false;
             }
         }
 
-        var first = walls[0];
-        var last = walls[^1];
+        var first = edges[0];
+        var last = edges[^1];
 
-        var lastEnd = GetDirectedEnd(edges[^1], last);
-        var firstStart = GetDirectedStart(edges[0], first);
-
-        if (lastEnd.DistanceTo(firstStart) > tolerance)
+        if (last.Segment.End.DistanceTo(
+                first.Segment.Start) > tolerance)
         {
             result.Error(
                 "ROOM-005",
-                $"Room boundary is not closed between walls {last.Id} and {first.Id}.");
+                $"Room boundary is not closed between walls " +
+                $"{last.Wall.Id} and {first.Wall.Id}.");
 
             valid = false;
         }
@@ -162,39 +243,36 @@ public sealed class RoomValidationService
 
     private static bool ValidateRoomBoundaryGeometry(
         ValidationResult result,
-        Room room,
-        IReadOnlyList<Wall> walls)
+        IReadOnlyList<ResolvedBoundaryEdge> edges)
     {
-        if (walls.Count != room.WallIds.Count)
-            return false;
+        var tolerance =
+            RoomConstraints.GeometryToleranceMm;
 
-        if (walls.Count < 3)
-            return false;
-
-        var tolerance = RoomConstraints.GeometryToleranceMm;
         var valid = true;
 
-        for (var firstIndex = 0; firstIndex < walls.Count; firstIndex++)
+        for (var firstIndex = 0;
+             firstIndex < edges.Count;
+             firstIndex++)
         {
             for (var secondIndex = firstIndex + 1;
-                 secondIndex < walls.Count;
+                 secondIndex < edges.Count;
                  secondIndex++)
             {
-                var first = walls[firstIndex];
-                var second = walls[secondIndex];
-                var firstEdge = room.Boundary.OuterLoop.Edges[firstIndex];
-                var secondEdge = room.Boundary.OuterLoop.Edges[secondIndex];
+                var first = edges[firstIndex];
+                var second = edges[secondIndex];
 
-                var relation = SegmentGeometry.Classify(
-                    GetDirectedStart(firstEdge, first),
-                    GetDirectedEnd(firstEdge, first),
-                    GetDirectedStart(secondEdge, second),
-                    GetDirectedEnd(secondEdge, second),
-                    tolerance);
+                var relation =
+                    SegmentGeometry.Classify(
+                        first.Segment.Start,
+                        first.Segment.End,
+                        second.Segment.Start,
+                        second.Segment.End,
+                        tolerance);
 
                 var adjacent =
                     secondIndex == firstIndex + 1 ||
-                    (firstIndex == 0 && secondIndex == walls.Count - 1);
+                    (firstIndex == 0 &&
+                     secondIndex == edges.Count - 1);
 
                 if (adjacent)
                 {
@@ -202,7 +280,9 @@ public sealed class RoomValidationService
                     {
                         result.Error(
                             "ROOM-006",
-                            $"Adjacent room boundary walls {first.Id} and {second.Id} have an invalid geometric relationship: {relation}.");
+                            $"Adjacent room boundary edges on walls " +
+                            $"{first.Wall.Id} and {second.Wall.Id} " +
+                            $"have an invalid geometric relationship: {relation}.");
 
                         valid = false;
                     }
@@ -214,7 +294,9 @@ public sealed class RoomValidationService
                 {
                     result.Error(
                         "ROOM-006",
-                        $"Room boundary walls {first.Id} and {second.Id} intersect or overlap: {relation}.");
+                        $"Room boundary edges on walls " +
+                        $"{first.Wall.Id} and {second.Wall.Id} " +
+                        $"intersect or overlap: {relation}.");
 
                     valid = false;
                 }
@@ -226,29 +308,17 @@ public sealed class RoomValidationService
 
     private static void ValidateRoomBoundaryOrientation(
         ValidationResult result,
-        Room room,
-        IReadOnlyList<Wall> walls)
+        IReadOnlyList<ResolvedBoundaryEdge> edges)
     {
-        var edges = room.Boundary.OuterLoop.Edges;
+        var points =
+            edges
+                .Select(edge => edge.Segment.Start)
+                .ToArray();
 
-        if (edges.Count != walls.Count)
-        {
-            result.Error(
-                "ROOM-008",
-                "Room outer boundary does not have a matching directed edge for every wall.");
-
-            return;
-        }
-
-        var points = walls
-            .Select(
-                (wall, index) =>
-                    GetDirectedStart(edges[index], wall))
-            .ToArray();
-
-        var orientation = PolygonGeometry.GetOrientation(
-            points,
-            RoomConstraints.GeometryToleranceMm);
+        var orientation =
+            PolygonGeometry.GetOrientation(
+                points,
+                RoomConstraints.GeometryToleranceMm);
 
         switch (orientation)
         {
@@ -273,22 +343,46 @@ public sealed class RoomValidationService
         }
     }
 
-    private static Point2D GetDirectedStart(
-        BoundaryEdge edge,
-        Wall wall)
+    private static bool IsOpeningOnRoomBoundary(
+        Room room,
+        EntityId wallId,
+        double offsetMm,
+        double widthMm)
     {
-        return edge.IsReversed
-            ? wall.End
-            : wall.Start;
-    }
+        if (!double.IsFinite(offsetMm) ||
+            !double.IsFinite(widthMm) ||
+            widthMm <= 0)
+        {
+            return false;
+        }
 
-    private static Point2D GetDirectedEnd(
-        BoundaryEdge edge,
-        Wall wall)
-    {
-        return edge.IsReversed
-            ? wall.Start
-            : wall.End;
+        var endMm = offsetMm + widthMm;
+
+        if (!double.IsFinite(endMm))
+            return false;
+
+        foreach (var edge in room.Boundary.OuterLoop.Edges)
+        {
+            if (edge.WallId != wallId)
+                continue;
+
+            if (edge.IsWholeWall)
+                return true;
+
+            var span = edge.Span!.Value;
+
+            if (span.ContainsOffset(
+                    Length.FromMillimeters(offsetMm),
+                    RoomConstraints.GeometryToleranceMm) &&
+                span.ContainsOffset(
+                    Length.FromMillimeters(endMm),
+                    RoomConstraints.GeometryToleranceMm))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static void ValidateOpeningBounds(
@@ -302,6 +396,18 @@ public sealed class RoomValidationService
         string horizontalCode,
         string verticalCode)
     {
+        if (!double.IsFinite(offsetMm) ||
+            !double.IsFinite(widthMm) ||
+            !double.IsFinite(heightMm) ||
+            !double.IsFinite(sillMm))
+        {
+            result.Error(
+                horizontalCode,
+                $"{label} contains non-finite dimensions.");
+
+            return;
+        }
+
         if (widthMm < RoomConstraints.MinimumOpeningWidthMm)
         {
             result.Error(
@@ -317,7 +423,8 @@ public sealed class RoomValidationService
         }
 
         if (offsetMm < -RoomConstraints.GeometryToleranceMm ||
-            offsetMm + widthMm > wall.LengthMm + RoomConstraints.GeometryToleranceMm)
+            offsetMm + widthMm >
+            wall.LengthMm + RoomConstraints.GeometryToleranceMm)
         {
             result.Error(
                 horizontalCode,
@@ -325,7 +432,8 @@ public sealed class RoomValidationService
         }
 
         if (sillMm < -RoomConstraints.GeometryToleranceMm ||
-            sillMm + heightMm > wall.Height.Millimeters + RoomConstraints.GeometryToleranceMm)
+            sillMm + heightMm >
+            wall.Height.Millimeters + RoomConstraints.GeometryToleranceMm)
         {
             result.Error(
                 verticalCode,
@@ -338,38 +446,55 @@ public sealed class RoomValidationService
         Project project,
         Room room)
     {
-        var openings = project.Objects
-            .Where(x => x is Door or Window)
-            .Select(x => (
-                Object: x,
-                Host: x switch
-                {
-                    Door door => door.HostWallId,
-                    Window window => window.HostWallId,
-                    _ => default
-                },
-                Offset: x switch
-                {
-                    Door door => door.OffsetFromWallStart.Millimeters,
-                    Window window => window.OffsetFromWallStart.Millimeters,
-                    _ => 0
-                },
-                Width: x switch
-                {
-                    Door door => door.Width.Millimeters,
-                    Window window => window.Width.Millimeters,
-                    _ => 0
-                }))
-            .Where(x => room.WallIds.Contains(x.Host))
-            .GroupBy(x => x.Host);
+        var openings =
+            project.Objects
+                .Where(x => x is Door or Window)
+                .Select(x => (
+                    Object: x,
+                    Host: x switch
+                    {
+                        Door door => door.HostWallId,
+                        Window window => window.HostWallId,
+                        _ => default
+                    },
+                    Offset: x switch
+                    {
+                        Door door =>
+                            door.OffsetFromWallStart.Millimeters,
+
+                        Window window =>
+                            window.OffsetFromWallStart.Millimeters,
+
+                        _ => 0
+                    },
+                    Width: x switch
+                    {
+                        Door door =>
+                            door.Width.Millimeters,
+
+                        Window window =>
+                            window.Width.Millimeters,
+
+                        _ => 0
+                    }))
+                .Where(x =>
+                    IsOpeningOnRoomBoundary(
+                        room,
+                        x.Host,
+                        x.Offset,
+                        x.Width))
+                .GroupBy(x => x.Host);
 
         foreach (var group in openings)
         {
-            var ordered = group
-                .OrderBy(x => x.Offset)
-                .ToList();
+            var ordered =
+                group
+                    .OrderBy(x => x.Offset)
+                    .ToList();
 
-            for (var index = 1; index < ordered.Count; index++)
+            for (var index = 1;
+                 index < ordered.Count;
+                 index++)
             {
                 var previous = ordered[index - 1];
                 var current = ordered[index];
@@ -386,4 +511,9 @@ public sealed class RoomValidationService
             }
         }
     }
+
+    private readonly record struct ResolvedBoundaryEdge(
+        BoundaryEdge Edge,
+        Wall Wall,
+        WallSegment Segment);
 }

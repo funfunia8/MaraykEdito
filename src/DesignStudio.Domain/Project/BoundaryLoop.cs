@@ -20,10 +20,29 @@ public sealed class BoundaryLoop
 
     internal void AddEdge(BoundaryEdge edge)
     {
-        if (_edges.Any(
-                existing => existing.WallId == edge.WallId))
+        foreach (var existing in _edges)
         {
-            return;
+            if (existing.WallId != edge.WallId)
+                continue;
+
+            if (existing.Span == edge.Span)
+            {
+                // Same physical wall span is already represented.
+                // Traversal direction does not create a distinct span.
+                return;
+            }
+
+            if (existing.IsWholeWall || edge.IsWholeWall)
+            {
+                throw new InvalidOperationException(
+                    $"Boundary loop cannot contain overlapping spans of wall {edge.WallId}.");
+            }
+
+            if (existing.Span!.Value.Overlaps(edge.Span!.Value))
+            {
+                throw new InvalidOperationException(
+                    $"Boundary loop cannot contain overlapping spans of wall {edge.WallId}.");
+            }
         }
 
         _edges.Add(edge);

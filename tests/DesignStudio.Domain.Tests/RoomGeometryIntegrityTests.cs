@@ -20,14 +20,16 @@ public sealed class RoomGeometryIntegrityTests
 
         project.Add(room);
 
-        var validation = new RoomValidationService().Validate(project, room);
+        var validation = new RoomValidationService()
+            .Validate(project, room);
 
         Assert.DoesNotContain(
             validation.Issues,
             issue => issue.Code is
                 "ROOM-006" or
                 "ROOM-007" or
-                "ROOM-008");
+                "ROOM-008" or
+                "ROOM-009");
     }
 
     [Fact]
@@ -43,7 +45,8 @@ public sealed class RoomGeometryIntegrityTests
 
         project.Add(room);
 
-        var validation = new RoomValidationService().Validate(project, room);
+        var validation = new RoomValidationService()
+            .Validate(project, room);
 
         Assert.Contains(
             validation.Issues,
@@ -64,7 +67,8 @@ public sealed class RoomGeometryIntegrityTests
 
         project.Add(room);
 
-        var validation = new RoomValidationService().Validate(project, room);
+        var validation = new RoomValidationService()
+            .Validate(project, room);
 
         Assert.Contains(
             validation.Issues,
@@ -84,7 +88,8 @@ public sealed class RoomGeometryIntegrityTests
 
         project.Add(room);
 
-        var validation = new RoomValidationService().Validate(project, room);
+        var validation = new RoomValidationService()
+            .Validate(project, room);
 
         Assert.Contains(
             validation.Issues,
@@ -123,7 +128,8 @@ public sealed class RoomGeometryIntegrityTests
 
         project.Add(room);
 
-        var validation = new RoomValidationService().Validate(project, room);
+        var validation = new RoomValidationService()
+            .Validate(project, room);
 
         Assert.Contains(
             validation.Issues,
@@ -146,7 +152,8 @@ public sealed class RoomGeometryIntegrityTests
 
         project.Add(room);
 
-        var validation = new RoomValidationService().Validate(project, room);
+        var validation = new RoomValidationService()
+            .Validate(project, room);
 
         Assert.Contains(
             validation.Issues,
@@ -166,7 +173,8 @@ public sealed class RoomGeometryIntegrityTests
 
         project.Add(room);
 
-        var validation = new RoomValidationService().Validate(project, room);
+        var validation = new RoomValidationService()
+            .Validate(project, room);
 
         Assert.Contains(
             validation.Issues,
@@ -188,7 +196,8 @@ public sealed class RoomGeometryIntegrityTests
 
         project.Add(room);
 
-        var validation = new RoomValidationService().Validate(project, room);
+        var validation = new RoomValidationService()
+            .Validate(project, room);
 
         Assert.DoesNotContain(
             validation.Issues,
@@ -196,6 +205,170 @@ public sealed class RoomGeometryIntegrityTests
                 "ROOM-006" or
                 "ROOM-007" or
                 "ROOM-008");
+    }
+
+    [Fact]
+    public void PartialBoundaryEdgeUsesItsPhysicalWallSpan()
+    {
+        var project = new ProjectModel("Geometry");
+        var room = new Room("Room");
+
+        var baseWall = new Wall(
+            new Point2D(0, 0),
+            new Point2D(5000, 0),
+            Length.FromMillimeters(120),
+            Length.FromMillimeters(2700));
+
+        project.Add(baseWall);
+
+        room.AddBoundaryEdge(
+            new BoundaryEdge(
+                baseWall.Id,
+                new WallSpan(
+                    Length.FromMillimeters(1000),
+                    Length.FromMillimeters(4000))));
+
+        AddWall(
+            project,
+            room,
+            new Point2D(4000, 0),
+            new Point2D(4000, 3000));
+
+        AddWall(
+            project,
+            room,
+            new Point2D(4000, 3000),
+            new Point2D(1000, 3000));
+
+        AddWall(
+            project,
+            room,
+            new Point2D(1000, 3000),
+            new Point2D(1000, 0));
+
+        project.Add(room);
+
+        var validation = new RoomValidationService()
+            .Validate(project, room);
+
+        Assert.DoesNotContain(
+            validation.Issues,
+            issue => issue.Code is
+                "ROOM-004" or
+                "ROOM-005" or
+                "ROOM-006" or
+                "ROOM-007" or
+                "ROOM-008" or
+                "ROOM-009");
+    }
+
+    [Fact]
+    public void ReversedPartialBoundaryEdgeUsesReversedPhysicalSpan()
+    {
+        var project = new ProjectModel("Geometry");
+        var room = new Room("Room");
+
+        // Physical wall direction is right-to-left.
+        var baseWall = new Wall(
+            new Point2D(5000, 0),
+            new Point2D(0, 0),
+            Length.FromMillimeters(120),
+            Length.FromMillimeters(2700));
+
+        project.Add(baseWall);
+
+        // Physical offsets 1000..4000 correspond to points
+        // (4000,0)..(1000,0). Reversing traversal produces
+        // (1000,0)..(4000,0), which is the CCW bottom edge.
+        room.AddBoundaryEdge(
+            new BoundaryEdge(
+                baseWall.Id,
+                new WallSpan(
+                    Length.FromMillimeters(1000),
+                    Length.FromMillimeters(4000)),
+                IsReversed: true));
+
+        AddWall(
+            project,
+            room,
+            new Point2D(4000, 0),
+            new Point2D(4000, 3000));
+
+        AddWall(
+            project,
+            room,
+            new Point2D(4000, 3000),
+            new Point2D(1000, 3000));
+
+        AddWall(
+            project,
+            room,
+            new Point2D(1000, 3000),
+            new Point2D(1000, 0));
+
+        project.Add(room);
+
+        var validation = new RoomValidationService()
+            .Validate(project, room);
+
+        Assert.DoesNotContain(
+            validation.Issues,
+            issue => issue.Code is
+                "ROOM-004" or
+                "ROOM-005" or
+                "ROOM-006" or
+                "ROOM-007" or
+                "ROOM-008" or
+                "ROOM-009");
+    }
+
+    [Fact]
+    public void BoundarySpanOutsideWallLengthIsRejected()
+    {
+        var project = new ProjectModel("Geometry");
+        var room = new Room("Room");
+
+        var baseWall = new Wall(
+            new Point2D(0, 0),
+            new Point2D(5000, 0),
+            Length.FromMillimeters(120),
+            Length.FromMillimeters(2700));
+
+        project.Add(baseWall);
+
+        room.AddBoundaryEdge(
+            new BoundaryEdge(
+                baseWall.Id,
+                new WallSpan(
+                    Length.FromMillimeters(1000),
+                    Length.FromMillimeters(5500))));
+
+        AddWall(
+            project,
+            room,
+            new Point2D(5000, 0),
+            new Point2D(5000, 4000));
+
+        AddWall(
+            project,
+            room,
+            new Point2D(5000, 4000),
+            new Point2D(1000, 4000));
+
+        AddWall(
+            project,
+            room,
+            new Point2D(1000, 4000),
+            new Point2D(1000, 0));
+
+        project.Add(room);
+
+        var validation = new RoomValidationService()
+            .Validate(project, room);
+
+        Assert.Contains(
+            validation.Issues,
+            issue => issue.Code == "ROOM-009");
     }
 
     private static Wall AddWall(
