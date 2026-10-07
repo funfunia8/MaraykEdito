@@ -9,7 +9,7 @@ using DesignStudio.Application.Shell;
 using DesignStudio.Geometry.Derived;
 using DesignStudio.Localization;
 using DesignStudio.Storage;
-using DesignStudio.Storage.Recovery;
+using DesignStudio.Application.Persistence;
 
 
 namespace DesignStudio.UI.ViewModels;
@@ -19,17 +19,16 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private readonly WorkspaceController _workspace;
     private readonly ILocalizationService _localization;
     private readonly IProjectSerializer _serializer;
-    private readonly IProjectRecoveryStore _recoveryStore;
-    private const string RecoveryFileName = "autosave.design";
+    private readonly ProjectRecoveryCoordinator _recoveryCoordinator;
     private readonly ObservableCollection<RoomListItem> _rooms = new();
     private string _statusOverride = string.Empty;
 
-    public MainWindowViewModel(WorkspaceController workspace, ILocalizationService localization, IProjectSerializer serializer, IProjectRecoveryStore recoveryStore)
+    public MainWindowViewModel(WorkspaceController workspace, ILocalizationService localization, IProjectSerializer serializer, ProjectRecoveryCoordinator recoveryCoordinator)
     {
         _workspace = workspace;
         _localization = localization;
         _serializer = serializer;
-        _recoveryStore = recoveryStore;
+        _recoveryCoordinator = recoveryCoordinator;
         Rooms = new ReadOnlyObservableCollection<RoomListItem>(_rooms);
         _localization.LanguageChanged += (_, _) => RefreshTexts();
     }
@@ -86,12 +85,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public bool IsOpeningSelected => SelectedOpeningId is not null;
     public bool IsDirty => _workspace.State.IsDirty;
-    public bool HasRecoverySnapshot => _recoveryStore.Exists(RecoveryFilePath);
-    public DateTimeOffset? RecoverySnapshotTime => _recoveryStore.GetLastWriteTime(RecoveryFilePath);
-    public string RecoverySnapshotPathForDisplay() => RecoveryFilePath;
-    public string RecoveryFilePath => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "DesignStudio", "Recovery", RecoveryFileName);
+    public bool HasRecoverySnapshot => _recoveryCoordinator.HasRecoverySnapshot;
+    public DateTimeOffset? RecoverySnapshotTime => _recoveryCoordinator.RecoverySnapshotTime;
+    public string RecoverySnapshotPathForDisplay() => _recoveryCoordinator.RecoveryPath;
     public string? FilePath => _workspace.State.FilePath;
     public int SelectedWallIndex { get; private set; }
     public EntityId? SelectedOpeningId { get; private set; }
@@ -182,7 +178,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             File.Move(tempPath, filePath, overwrite: true);
             _workspace.State.SetFilePath(filePath);
             _workspace.State.MarkSaved();
-            _recoveryStore.Delete(RecoveryFilePath);
+            _recoveryCoordinator.ClearAfterSuccessfulSaveOrOpen();
             _statusOverride = _localization.Get("status.saved");
             RefreshState();
         }
@@ -199,7 +195,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _workspace.OpenProject(project);
         _workspace.State.SetFilePath(filePath);
         _workspace.State.MarkSaved();
-        _recoveryStore.Delete(RecoveryFilePath);
+        _recoveryCoordinator.ClearAfterSuccessfulSaveOrOpen();
         SyncRooms();
         ResetSelection();
         _statusOverride = _localization.Get("status.opened");
@@ -235,19 +231,18 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public async Task AutoSaveRecoveryAsync(CancellationToken cancellationToken = default)
     {
-        if (_workspace.State.ActiveProject is null || !_workspace.State.IsDirty) return;
-        await _recoveryStore.SaveAsync(_workspace.State.ActiveProject, RecoveryFilePath, cancellationToken);
+        var saved = await _recoveryCoordinator.AutoSaveAsync(cancellationToken);
+        if (!saved) return;
+
         _statusOverride = _localization.Get("recovery.saved");
         RefreshState();
     }
 
     public async Task<bool> RecoverProjectAsync(CancellationToken cancellationToken = default)
     {
-        if (!HasRecoverySnapshot) return false;
-        var project = await _recoveryStore.LoadAsync(RecoveryFilePath, cancellationToken);
-        _workspace.OpenProject(project);
-        _workspace.State.SetFilePath(null);
-        _workspace.State.MarkDirty();
+        var recovered = await _recoveryCoordinator.RecoverAsync(cancellationToken);
+        if (!recovered) return false;
+
         SyncRooms();
         ResetSelection();
         _statusOverride = _localization.Get("recovery.restored");
@@ -257,7 +252,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public void ClearRecoverySnapshot()
     {
-        _recoveryStore.Delete(RecoveryFilePath);
+        _recoveryCoordinator.ClearRecoverySnapshot();
         _statusOverride = _localization.Get("recovery.cleared");
         RefreshState();
     }

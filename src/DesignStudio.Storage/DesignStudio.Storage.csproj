@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
+    <ProjectReference Include="..\DesignStudio.Application\DesignStudio.Application.csproj" />
     <ProjectReference Include="..\DesignStudio.Domain\DesignStudio.Domain.csproj" />
   </ItemGroup>
 </Project>

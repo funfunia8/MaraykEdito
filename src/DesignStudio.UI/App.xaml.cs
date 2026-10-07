@@ -1,4 +1,6 @@
+using System.IO;
 using System.Windows;
+using DesignStudio.Application.Persistence;
 using DesignStudio.Application.Shell;
 using DesignStudio.Localization;
 using DesignStudio.Storage;
@@ -21,6 +23,23 @@ public partial class App : System.Windows.Application
 
         var serializer = new JsonProjectSerializer();
         var recoveryStore = new ProjectRecoveryStore(serializer);
-        MainViewModel = new MainWindowViewModel(workspace, localization, serializer, recoveryStore);
+
+        var recoveryPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "DesignStudio",
+            "Recovery",
+            "autosave.design");
+
+        var recoveryCoordinator =
+            new ProjectRecoveryCoordinator(
+                workspace,
+                recoveryStore,
+                recoveryPath);
+
+        MainViewModel = new MainWindowViewModel(
+            workspace,
+            localization,
+            serializer,
+            recoveryCoordinator);
     }
 }
