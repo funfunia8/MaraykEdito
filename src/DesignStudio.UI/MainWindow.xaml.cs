@@ -26,19 +26,42 @@ public partial class MainWindow : Window
         Loaded -= MainWindow_Loaded;
         if (!App.MainViewModel.HasRecoverySnapshot) return;
 
-        var timestamp = App.MainViewModel.RecoverySnapshotTime?.ToLocalTime().ToString("g") ?? string.Empty;
-        var result = MessageBox.Show(
-            $"{App.MainViewModel.RecoverySnapshotPathForDisplay()}\n\nRecovery snapshot: {timestamp}",
-            "Design Studio Recovery",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Information);
+        var timestamp =
+            App.MainViewModel.RecoverySnapshotTime?.ToLocalTime().ToString("g")
+            ?? string.Empty;
 
-        if (result == MessageBoxResult.Yes)
+        var dialog = new RecoveryDialog(
+            App.MainViewModel.RecoveryDialogTitle,
+            App.MainViewModel.RecoveryAvailableText,
+            App.MainViewModel.RecoverySnapshotPathForDisplay(),
+            timestamp,
+            App.MainViewModel.RecoveryRestoreText,
+            App.MainViewModel.RecoveryDiscardText,
+            App.MainViewModel.CurrentLanguage == DesignStudio.Localization.Language.Arabic
+                ? FlowDirection.RightToLeft
+                : FlowDirection.LeftToRight)
         {
-            try { await App.MainViewModel.RecoverProjectAsync(); }
-            catch (Exception ex) { MessageBox.Show(ex.Message, "Design Studio", MessageBoxButton.OK, MessageBoxImage.Error); }
+            Owner = this
+        };
+
+        dialog.ShowDialog();
+
+        if (dialog.Result == RecoveryDialogResult.Restore)
+        {
+            try
+            {
+                await App.MainViewModel.RecoverProjectAsync();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    ex.Message,
+                    App.MainViewModel.RecoveryErrorTitle,
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
         }
-        else
+        else if (dialog.Result == RecoveryDialogResult.Discard)
         {
             App.MainViewModel.ClearRecoverySnapshot();
         }

@@ -53,7 +53,11 @@ public sealed class LocalizationService : ILocalizationService
             ["status.saved"] = ("Project saved", "تم حفظ المشروع"),
             ["status.opened"] = ("Project opened", "تم فتح المشروع"),
             ["status.noProject"] = ("No active project", "لا يوجد مشروع نشط"),
+            ["recovery.title"] = ("Project Recovery", "استرداد المشروع"),
             ["recovery.available"] = ("A recovery snapshot is available", "توجد نسخة استرداد متاحة"),
+            ["recovery.restore"] = ("Restore", "استرداد"),
+            ["recovery.discard"] = ("Discard", "حذف"),
+            ["recovery.errorTitle"] = ("Recovery Error", "خطأ في استرداد المشروع"),
             ["recovery.saved"] = ("Recovery snapshot saved", "تم حفظ نسخة الاسترداد"),
             ["recovery.restored"] = ("Recovery snapshot restored", "تم استرداد نسخة المشروع"),
             ["recovery.cleared"] = ("Recovery snapshot cleared", "تم حذف نسخة الاسترداد")

@@ -88,6 +88,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public bool HasRecoverySnapshot => _recoveryCoordinator.HasRecoverySnapshot;
     public DateTimeOffset? RecoverySnapshotTime => _recoveryCoordinator.RecoverySnapshotTime;
     public string RecoverySnapshotPathForDisplay() => _recoveryCoordinator.RecoveryPath;
+    public string RecoveryDialogTitle => _localization.Get("recovery.title");
+    public string RecoveryAvailableText => _localization.Get("recovery.available");
+    public string RecoveryRestoreText => _localization.Get("recovery.restore");
+    public string RecoveryDiscardText => _localization.Get("recovery.discard");
+    public string RecoveryErrorTitle => _localization.Get("recovery.errorTitle");
     public string? FilePath => _workspace.State.FilePath;
     public int SelectedWallIndex { get; private set; }
     public EntityId? SelectedOpeningId { get; private set; }
@@ -476,7 +481,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         foreach (var property in new[]
         {
-            nameof(CurrentLanguage), nameof(Title), nameof(Subtitle), nameof(NewProjectText), nameof(OpenProjectText), nameof(SaveProjectText), nameof(CreateRoomText), nameof(RoomsText), nameof(WallsText), nameof(DoorsText), nameof(WindowsText), nameof(DesignText), nameof(ModelText), nameof(DocumentsText), nameof(PropertiesText), nameof(RelationshipsText), nameof(ValidationText), nameof(DesignViewText), nameof(ExtendText), nameof(ShrinkText), nameof(AddDoorText), nameof(AddWindowText), nameof(UndoText), nameof(RedoText), nameof(SelectedWallText), nameof(LengthText), nameof(StatusText), nameof(SelectedOpeningText), nameof(OpeningKindText), nameof(OffsetText), nameof(WidthText), nameof(SelectedOpeningKind), nameof(HeightText), nameof(SillText), nameof(ApplyOpeningText), nameof(IsOpeningSelected), nameof(AddCabinetText), nameof(SelectedCabinetText), nameof(CabinetPositionText), nameof(CabinetWidthText), nameof(CabinetDepthText), nameof(CabinetRotationText), nameof(IsCabinetSelected), nameof(HasRecoverySnapshot), nameof(RecoverySnapshotTime)
+            nameof(CurrentLanguage), nameof(Title), nameof(Subtitle), nameof(NewProjectText), nameof(OpenProjectText), nameof(SaveProjectText), nameof(CreateRoomText), nameof(RoomsText), nameof(WallsText), nameof(DoorsText), nameof(WindowsText), nameof(DesignText), nameof(ModelText), nameof(DocumentsText), nameof(PropertiesText), nameof(RelationshipsText), nameof(ValidationText), nameof(DesignViewText), nameof(ExtendText), nameof(ShrinkText), nameof(AddDoorText), nameof(AddWindowText), nameof(UndoText), nameof(RedoText), nameof(SelectedWallText), nameof(LengthText), nameof(StatusText), nameof(SelectedOpeningText), nameof(OpeningKindText), nameof(OffsetText), nameof(WidthText), nameof(SelectedOpeningKind), nameof(HeightText), nameof(SillText), nameof(ApplyOpeningText), nameof(IsOpeningSelected), nameof(AddCabinetText), nameof(SelectedCabinetText), nameof(CabinetPositionText), nameof(CabinetWidthText), nameof(CabinetDepthText), nameof(CabinetRotationText), nameof(IsCabinetSelected), nameof(HasRecoverySnapshot), nameof(RecoverySnapshotTime), nameof(RecoveryDialogTitle), nameof(RecoveryAvailableText), nameof(RecoveryRestoreText), nameof(RecoveryDiscardText), nameof(RecoveryErrorTitle)
         }) OnPropertyChanged(property);
     }
 
