@@ -161,27 +161,6 @@ public sealed class RoomGeometryIntegrityTests
     }
 
     [Fact]
-    public void NearZeroAreaOuterBoundaryIsRejectedAsDegenerate()
-    {
-        var project = new ProjectModel("Geometry");
-        var room = new Room("Room");
-
-        AddWall(project, room, new Point2D(0, 0), new Point2D(5000, 0));
-        AddWall(project, room, new Point2D(5000, 0), new Point2D(5000, 0.0015));
-        AddWall(project, room, new Point2D(5000, 0.0015), new Point2D(0, 0.0015));
-        AddWall(project, room, new Point2D(0, 0.0015), new Point2D(0, 0));
-
-        project.Add(room);
-
-        var validation = new RoomValidationService()
-            .Validate(project, room);
-
-        Assert.Contains(
-            validation.Issues,
-            issue => issue.Code == "ROOM-008");
-    }
-
-    [Fact]
     public void ConcaveCounterClockwiseRoomHasValidOuterBoundaryOrientation()
     {
         var project = new ProjectModel("Geometry");

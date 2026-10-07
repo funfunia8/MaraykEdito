@@ -17,15 +17,24 @@ public static class SegmentGeometry
         Point2D secondEnd,
         double toleranceMm = 0.001)
     {
-        if (toleranceMm < 0)
-            throw new ArgumentOutOfRangeException(nameof(toleranceMm));
-
-        var firstLength = firstStart.DistanceTo(firstEnd);
-        var secondLength = secondStart.DistanceTo(secondEnd);
-
-        if (firstLength <= toleranceMm || secondLength <= toleranceMm)
+        if (!double.IsFinite(toleranceMm) ||
+            toleranceMm < 0)
         {
-            if (firstLength <= toleranceMm && secondLength <= toleranceMm)
+            throw new ArgumentOutOfRangeException(
+                nameof(toleranceMm));
+        }
+
+        var firstLength =
+            firstStart.DistanceTo(firstEnd);
+
+        var secondLength =
+            secondStart.DistanceTo(secondEnd);
+
+        if (firstLength <= toleranceMm ||
+            secondLength <= toleranceMm)
+        {
+            if (firstLength <= toleranceMm &&
+                secondLength <= toleranceMm)
             {
                 return firstStart.DistanceTo(secondStart) <= toleranceMm
                     ? SegmentRelation.Touch
@@ -78,29 +87,33 @@ public static class SegmentGeometry
                 toleranceMm);
         }
 
-        var orientation1 = Orientation(
-            firstStart,
-            firstEnd,
-            secondStart,
-            toleranceMm);
+        var orientation1 =
+            Orientation(
+                firstStart,
+                firstEnd,
+                secondStart,
+                toleranceMm);
 
-        var orientation2 = Orientation(
-            firstStart,
-            firstEnd,
-            secondEnd,
-            toleranceMm);
+        var orientation2 =
+            Orientation(
+                firstStart,
+                firstEnd,
+                secondEnd,
+                toleranceMm);
 
-        var orientation3 = Orientation(
-            secondStart,
-            secondEnd,
-            firstStart,
-            toleranceMm);
+        var orientation3 =
+            Orientation(
+                secondStart,
+                secondEnd,
+                firstStart,
+                toleranceMm);
 
-        var orientation4 = Orientation(
-            secondStart,
-            secondEnd,
-            firstEnd,
-            toleranceMm);
+        var orientation4 =
+            Orientation(
+                secondStart,
+                secondEnd,
+                firstEnd,
+                toleranceMm);
 
         if (orientation1 != 0 &&
             orientation2 != 0 &&
@@ -147,26 +160,35 @@ public static class SegmentGeometry
         double firstLength,
         double toleranceMm)
     {
-        var firstProjection = ProjectParameter(
-            firstStart,
-            firstEnd,
-            secondStart);
+        var firstProjection =
+            ProjectParameter(
+                firstStart,
+                firstEnd,
+                secondStart);
 
-        var secondProjection = ProjectParameter(
-            firstStart,
-            firstEnd,
-            secondEnd);
+        var secondProjection =
+            ProjectParameter(
+                firstStart,
+                firstEnd,
+                secondEnd);
 
-        var overlapStart = Math.Max(
-            0,
-            Math.Min(firstProjection, secondProjection));
+        var overlapStart =
+            Math.Max(
+                0,
+                Math.Min(
+                    firstProjection,
+                    secondProjection));
 
-        var overlapEnd = Math.Min(
-            1,
-            Math.Max(firstProjection, secondProjection));
+        var overlapEnd =
+            Math.Min(
+                1,
+                Math.Max(
+                    firstProjection,
+                    secondProjection));
 
         var overlapLengthMm =
-            (overlapEnd - overlapStart) * firstLength;
+            (overlapEnd - overlapStart) *
+            firstLength;
 
         if (overlapLengthMm > toleranceMm)
             return SegmentRelation.Overlap;
@@ -184,18 +206,29 @@ public static class SegmentGeometry
         Point2D secondEnd,
         double toleranceMm)
     {
-        var firstLength = firstStart.DistanceTo(firstEnd);
+        var firstLength =
+            firstStart.DistanceTo(firstEnd);
 
         if (firstLength <= toleranceMm)
+        {
             return secondStart.DistanceTo(firstStart) <= toleranceMm &&
                    secondEnd.DistanceTo(firstStart) <= toleranceMm;
+        }
 
         var secondStartDistance =
-            Math.Abs(Cross(firstStart, firstEnd, secondStart)) /
+            Math.Abs(
+                Cross(
+                    firstStart,
+                    firstEnd,
+                    secondStart)) /
             firstLength;
 
         var secondEndDistance =
-            Math.Abs(Cross(firstStart, firstEnd, secondEnd)) /
+            Math.Abs(
+                Cross(
+                    firstStart,
+                    firstEnd,
+                    secondEnd)) /
             firstLength;
 
         return secondStartDistance <= toleranceMm &&
@@ -208,28 +241,40 @@ public static class SegmentGeometry
         Point2D end,
         double toleranceMm)
     {
-        var length = start.DistanceTo(end);
+        var length =
+            start.DistanceTo(end);
 
         if (length <= toleranceMm)
             return point.DistanceTo(start) <= toleranceMm;
 
         var distanceFromLine =
-            Math.Abs(Cross(start, end, point)) /
+            Math.Abs(
+                Cross(
+                    start,
+                    end,
+                    point)) /
             length;
 
         if (distanceFromLine > toleranceMm)
             return false;
 
-        var dx = end.X - start.X;
-        var dy = end.Y - start.Y;
-        var lengthSquared = dx * dx + dy * dy;
+        var dx =
+            end.X - start.X;
+
+        var dy =
+            end.Y - start.Y;
+
+        var lengthSquared =
+            dx * dx +
+            dy * dy;
 
         var projection =
             ((point.X - start.X) * dx +
              (point.Y - start.Y) * dy) /
             lengthSquared;
 
-        var parameterTolerance = toleranceMm / length;
+        var parameterTolerance =
+            toleranceMm / length;
 
         return projection >= -parameterTolerance &&
                projection <= 1 + parameterTolerance;
@@ -241,18 +286,25 @@ public static class SegmentGeometry
         Point2D point,
         double toleranceMm)
     {
-        var length = start.DistanceTo(end);
+        var length =
+            start.DistanceTo(end);
 
         if (length <= toleranceMm)
             return 0;
 
         var signedDistance =
-            Cross(start, end, point) / length;
+            Cross(
+                start,
+                end,
+                point) /
+            length;
 
         if (Math.Abs(signedDistance) <= toleranceMm)
             return 0;
 
-        return signedDistance > 0 ? 1 : -1;
+        return signedDistance > 0
+            ? 1
+            : -1;
     }
 
     private static double ProjectParameter(
@@ -260,9 +312,15 @@ public static class SegmentGeometry
         Point2D end,
         Point2D point)
     {
-        var dx = end.X - start.X;
-        var dy = end.Y - start.Y;
-        var lengthSquared = dx * dx + dy * dy;
+        var dx =
+            end.X - start.X;
+
+        var dy =
+            end.Y - start.Y;
+
+        var lengthSquared =
+            dx * dx +
+            dy * dy;
 
         if (lengthSquared <= 0)
             return 0;
@@ -280,15 +338,45 @@ public static class SegmentGeometry
         Point2D secondEnd,
         double toleranceMm)
     {
-        var firstMinX = Math.Min(firstStart.X, firstEnd.X);
-        var firstMaxX = Math.Max(firstStart.X, firstEnd.X);
-        var firstMinY = Math.Min(firstStart.Y, firstEnd.Y);
-        var firstMaxY = Math.Max(firstStart.Y, firstEnd.Y);
+        var firstMinX =
+            Math.Min(
+                firstStart.X,
+                firstEnd.X);
 
-        var secondMinX = Math.Min(secondStart.X, secondEnd.X);
-        var secondMaxX = Math.Max(secondStart.X, secondEnd.X);
-        var secondMinY = Math.Min(secondStart.Y, secondEnd.Y);
-        var secondMaxY = Math.Max(secondStart.Y, secondEnd.Y);
+        var firstMaxX =
+            Math.Max(
+                firstStart.X,
+                firstEnd.X);
+
+        var firstMinY =
+            Math.Min(
+                firstStart.Y,
+                firstEnd.Y);
+
+        var firstMaxY =
+            Math.Max(
+                firstStart.Y,
+                firstEnd.Y);
+
+        var secondMinX =
+            Math.Min(
+                secondStart.X,
+                secondEnd.X);
+
+        var secondMaxX =
+            Math.Max(
+                secondStart.X,
+                secondEnd.X);
+
+        var secondMinY =
+            Math.Min(
+                secondStart.Y,
+                secondEnd.Y);
+
+        var secondMaxY =
+            Math.Max(
+                secondStart.Y,
+                secondEnd.Y);
 
         return firstMinX <= secondMaxX + toleranceMm &&
                firstMaxX >= secondMinX - toleranceMm &&

@@ -91,24 +91,35 @@ public sealed class SegmentGeometryTests
     [Fact]
     public void ClassificationIsSymmetric()
     {
-        var firstStart = new Point2D(0, 0);
-        var firstEnd = new Point2D(10, 10);
-        var secondStart = new Point2D(0, 10);
-        var secondEnd = new Point2D(10, 0);
+        var firstStart =
+            new Point2D(0, 0);
 
-        var forward = SegmentGeometry.Classify(
-            firstStart,
-            firstEnd,
-            secondStart,
-            secondEnd);
+        var firstEnd =
+            new Point2D(10, 10);
 
-        var reverse = SegmentGeometry.Classify(
-            secondStart,
-            secondEnd,
-            firstStart,
-            firstEnd);
+        var secondStart =
+            new Point2D(0, 10);
 
-        Assert.Equal(forward, reverse);
+        var secondEnd =
+            new Point2D(10, 0);
+
+        var forward =
+            SegmentGeometry.Classify(
+                firstStart,
+                firstEnd,
+                secondStart,
+                secondEnd);
+
+        var reverse =
+            SegmentGeometry.Classify(
+                secondStart,
+                secondEnd,
+                firstStart,
+                firstEnd);
+
+        Assert.Equal(
+            forward,
+            reverse);
     }
 
     [Fact]
@@ -171,11 +182,38 @@ public sealed class SegmentGeometryTests
     public void NegativeToleranceIsRejected()
     {
         Assert.Throws<ArgumentOutOfRangeException>(
-            () => SegmentGeometry.Classify(
-                new Point2D(0, 0),
-                new Point2D(10, 0),
-                new Point2D(0, 1),
-                new Point2D(10, 1),
-                -0.001));
+            () =>
+                SegmentGeometry.Classify(
+                    new Point2D(0, 0),
+                    new Point2D(10, 0),
+                    new Point2D(0, 1),
+                    new Point2D(10, 1),
+                    -0.001));
+    }
+
+    [Fact]
+    public void NaNToleranceIsRejected()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () =>
+                SegmentGeometry.Classify(
+                    new Point2D(0, 0),
+                    new Point2D(10, 0),
+                    new Point2D(0, 1),
+                    new Point2D(10, 1),
+                    double.NaN));
+    }
+
+    [Fact]
+    public void PositiveInfinityToleranceIsRejected()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () =>
+                SegmentGeometry.Classify(
+                    new Point2D(0, 0),
+                    new Point2D(10, 0),
+                    new Point2D(0, 1),
+                    new Point2D(10, 1),
+                    double.PositiveInfinity));
     }
 }

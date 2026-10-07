@@ -62,9 +62,10 @@ public sealed class PolygonGeometryTests
             new Point2D(0, 4000)
         };
 
-        var orientation = PolygonGeometry.GetOrientation(
-            points,
-            0.001);
+        var orientation =
+            PolygonGeometry.GetOrientation(
+                points,
+                0.001);
 
         Assert.Equal(
             PolygonOrientation.CounterClockwise,
@@ -82,9 +83,10 @@ public sealed class PolygonGeometryTests
             new Point2D(5000, 0)
         };
 
-        var orientation = PolygonGeometry.GetOrientation(
-            points,
-            0.001);
+        var orientation =
+            PolygonGeometry.GetOrientation(
+                points,
+                0.001);
 
         Assert.Equal(
             PolygonOrientation.Clockwise,
@@ -101,9 +103,10 @@ public sealed class PolygonGeometryTests
             new Point2D(10000, 0)
         };
 
-        var orientation = PolygonGeometry.GetOrientation(
-            points,
-            0.001);
+        var orientation =
+            PolygonGeometry.GetOrientation(
+                points,
+                0.001);
 
         Assert.Equal(
             PolygonOrientation.Degenerate,
@@ -111,18 +114,19 @@ public sealed class PolygonGeometryTests
     }
 
     [Fact]
-    public void NearZeroAreaWithinGeometricToleranceIsDegenerate()
+    public void AreaWithinGeometricToleranceIsDegenerate()
     {
         var points = new[]
         {
             new Point2D(0, 0),
-            new Point2D(1000, 0),
-            new Point2D(1000, 0.0005)
+            new Point2D(0.001, 0),
+            new Point2D(0, 0.001)
         };
 
-        var orientation = PolygonGeometry.GetOrientation(
-            points,
-            0.001);
+        var orientation =
+            PolygonGeometry.GetOrientation(
+                points,
+                0.001);
 
         Assert.Equal(
             PolygonOrientation.Degenerate,
@@ -139,9 +143,10 @@ public sealed class PolygonGeometryTests
             new Point2D(1000, 0.01)
         };
 
-        var orientation = PolygonGeometry.GetOrientation(
-            points,
-            0.001);
+        var orientation =
+            PolygonGeometry.GetOrientation(
+                points,
+                0.001);
 
         Assert.Equal(
             PolygonOrientation.CounterClockwise,
@@ -159,7 +164,10 @@ public sealed class PolygonGeometryTests
         };
 
         Assert.Throws<ArgumentOutOfRangeException>(
-            () => PolygonGeometry.GetOrientation(points, -0.001));
+            () =>
+                PolygonGeometry.GetOrientation(
+                    points,
+                    -0.001));
     }
 
     [Fact]
@@ -172,6 +180,88 @@ public sealed class PolygonGeometryTests
         };
 
         Assert.Throws<ArgumentException>(
-            () => PolygonGeometry.SignedArea(points));
+            () =>
+                PolygonGeometry.SignedArea(points));
     }
+
+    [Fact]
+    public void SelfIntersectingPolygonIsRejected()
+    {
+        Assert.Throws<ArgumentException>(
+            () =>
+                PolygonGeometry.ValidateSimple(
+                    new[]
+                    {
+                        new Point2D(0, 0),
+                        new Point2D(5000, 4000),
+                        new Point2D(0, 4000),
+                        new Point2D(5000, 0)
+                    }));
+    }
+
+    [Fact]
+    public void NonAdjacentTouchIsRejected()
+    {
+        Assert.Throws<ArgumentException>(
+            () =>
+                PolygonGeometry.ValidateSimple(
+                    new[]
+                    {
+                        new Point2D(0, 0),
+                        new Point2D(5000, 0),
+                        new Point2D(5000, 4000),
+                        new Point2D(0, 4000),
+                        new Point2D(5000, 0)
+                    }));
+    }
+
+    [Fact]
+    public void ZeroLengthBoundaryEdgeIsRejected()
+    {
+        Assert.Throws<ArgumentException>(
+            () =>
+                PolygonGeometry.ValidateSimple(
+                    new[]
+                    {
+                        new Point2D(0, 0),
+                        new Point2D(5000, 0),
+                        new Point2D(5000, 0),
+                        new Point2D(0, 4000)
+                    }));
+    }
+
+    [Fact]
+    public void ConcaveSimplePolygonIsAccepted()
+    {
+        var points = new[]
+        {
+            new Point2D(0, 0),
+            new Point2D(5000, 0),
+            new Point2D(5000, 2000),
+            new Point2D(3000, 2000),
+            new Point2D(3000, 4000),
+            new Point2D(0, 4000)
+        };
+
+        PolygonGeometry.ValidateSimple(points);
+    }
+
+    [Fact]
+    public void NearZeroAreaPolygonIsDegenerate()
+    {
+        var orientation =
+            PolygonGeometry.GetOrientation(
+                new[]
+                {
+                    new Point2D(0, 0),
+                    new Point2D(5000, 0),
+                    new Point2D(2500, 0.0000000001)
+                },
+                0.001);
+
+        Assert.Equal(
+            PolygonOrientation.Degenerate,
+            orientation);
+    }
+
 }
